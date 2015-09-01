@@ -15,7 +15,7 @@ Swipe left for backspace. This is currently very unreliable. It generally enters
 - Capitalization
 - Punctuation
 - Prosigns to implement behavior such as "repeat last word", "end transmission" (close keyboard and send), and newline
-- [Abbreviations](en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
+- [Abbreviations](https://en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
 
 ## Possible Features
 I will probably never get to these but they'd be cool.
