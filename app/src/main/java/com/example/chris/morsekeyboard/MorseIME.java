@@ -8,6 +8,7 @@ import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.Keyboard;
 import android.util.SparseArray;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import java.util.Timer;
@@ -15,14 +16,16 @@ import java.util.TimerTask;
 
 public class MorseIME extends InputMethodService
     implements KeyboardView.OnKeyboardActionListener{
-
+    private Keyboard keyboard;
     private long pressTime;
     private long releaseTime;
     private long ditTime = 200000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
     // wikipedia says 50 ms for good people.TODO make this a setting
-    private boolean newEntry; // used for starting new input to ignore preceeding space
-    private int currentLetter; // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah; ex: 12 is A; long because if you do too many dit/dahs it'll poop; TODO find a prettier solution
-
+    private boolean newEntry; // used for starting new input to ignore preceding space
+    private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
+                                // ex: 12 is A
+                                // long to not mess up on excessive dits/dahs
+    private boolean caps = false;
     private Timer wordTimer;
     private SparseArray<String> morse = new SparseArray<String>() {{
         put(12,"a");
@@ -61,17 +64,32 @@ public class MorseIME extends InputMethodService
         put(22211,"8");
         put(22221,"9");
         put(22222,"0");
+        put(121212,".");
+        put(221122,",");
+        put(112211,"?");
+        put(122221,"'");
+        put(212122,"!");
+        put(21121,"/");
+        put(21221,"(");
+        put(212212,")");
+        put(12111,"&");
+        put(222111,":");
+        put(212121,";");
+        put(21112,"=");
+        put(12121,"+");
+        put(211112,"-");
+        put(112212,"_");
+        put(121121,"\"");
+        put(1112112,"$");
+        put(122121,"@");
     }};
     // TODO prosigns
-    // period, comma, etc. should put themselves before the space, then put the space back
-    // quote formatting?
-
     // TODO automatic capitalization
 
     @Override
     public View onCreateInputView() {
         KeyboardView kv;
-        Keyboard keyboard;
+
         kv = (KeyboardView)getLayoutInflater().inflate(R.layout.keyboard, null);
         keyboard = new Keyboard(this, R.xml.onebutton);
         kv.setKeyboard(keyboard);
@@ -83,72 +101,99 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
+        if(primaryCode==Keyboard.KEYCODE_SHIFT) {
+            keyboard.setShifted(!keyboard.isShifted());
+        }
     }
 
     @Override
     public void onPress(int primaryCode) {
-        //TODO include shift and delete conditionals and edit the release code accordingly
         InputConnection ic = getCurrentInputConnection();
-        pressTime = System.nanoTime();
-        if(newEntry) {
-            newEntry = false; // time is recorded. Nothing else needed
-        }
-        else {
-            wordTimer.cancel();
-            long timeDiff = pressTime-releaseTime;
-            //android.util.Log.d("release_time",Long.toString(timeDiff));
-            // new word pauses handled by wordTimer started in onRelease()
-            if(pressTime-releaseTime > 2* ditTime) { // match 3 dits +/- 1 dit; new letter
-                //android.util.Log.d("currentLetter", Long.toString(currentLetter));
-                //android.util.Log.d("morsekeyboard", "new letter");
-                if(morse.get(currentLetter)==null) {
-                    currentLetter = 0;
-                    android.util.Log.d("onPress","letter failed, new letter");
-                    // TODO call error haptics, should ignore input for a pause so user notices failed letter
-                } else {
-                    ic.commitText(morse.get(currentLetter), 1);
-                    currentLetter = 0; // new letter
-                    newEntry = true; // resets time next press rather than guessing letter &c.
-                }
-                currentLetter = 0;
+        if(primaryCode == KeyEvent.KEYCODE_DEL) {
+            ic.deleteSurroundingText(1, 0);
+            // TODO cancel timer but don't crash when none scheduled
+            // wordTimer.cancel();
+            currentLetter = 0;
+            newEntry = true;
+        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) {
+            //keyboard.setShifted(true);
+        } else {
+            pressTime = System.nanoTime();
+            if (newEntry) {
+                newEntry = false; // time is recorded. Nothing else needed
             } else {
+                wordTimer.cancel();
+                long timeDiff = pressTime - releaseTime;
+                // new word 5 dit pauses handled by wordTimer started in onRelease() to move to next word
+                if (pressTime - releaseTime > 2 * ditTime) { // match 3 dit periods gap with tolerance of 1 dit for new letter
+                    if (morse.get(currentLetter) == null) {
+                        android.util.Log.d("onPress", "letter failed, new letter");
+                        // TODO call error haptics, should ignore input for short time so user notices failure
+                    } else {
+                        String letterString = morse.get(currentLetter);
+                        // TODO why don't I work? if(keyboard.isShifted()) {
+                        if(keyboard.isShifted()) {
+                            android.util.Log.d("shifttest","yup, totally shifted");
+                            letterString = letterString.toUpperCase();
+                            keyboard.setShifted(false);
+                        }
+                        ic.commitText(letterString, 1);
+                        newEntry = true; // resets time next press rather than guessing letter &c.
+                    }
+                    currentLetter = 0; // clear letter
+                } //else { // match anything shorter, just one dit period
+                    // dit time gap. Only for continuing current letter
+                    // time already recorded. Don't need to do anything
+                //}
             }
         }
-
     }
 
     @Override
     public void onRelease(int primaryCode) {
         InputConnection ic = getCurrentInputConnection();
-        releaseTime=System.nanoTime();
-        long timeDiff = releaseTime-pressTime;
-        //android.util.Log.d("press_time",Long.toString(timeDiff));
-        wordTimer = new Timer();
-        android.util.Log.d("onRelease","release happened. Timer should start.");
-        wordTimer.schedule(new TimerTask() {
-            @Override
-            public void run() { // on timeout, commit text and start new letter
-                InputConnection ic = getCurrentInputConnection();
-                android.util.Log.d("timer", "new word timeout");
-                if(morse.get(currentLetter)==null) {
-                    currentLetter = 0;
-                    android.util.Log.d("timer","letter failed, new word cancelled");
-                    // TODO call error haptics
-                } else {
-                    ic.commitText(morse.get(currentLetter, "") + " ", 1);
-                    currentLetter = 0; // new letter
-                    newEntry = true; // resets time next press rather than guessing letter &c.
+        if(primaryCode == KeyEvent.KEYCODE_DEL) {
+            //delete (already handled in press)
+            // TODO get rid of me?
+        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) {
+            //keyboard.setShifted(false);
+        } else {
+            releaseTime = System.nanoTime();
+            long timeDiff = releaseTime - pressTime;
+            wordTimer = new Timer();
+            wordTimer.schedule(new TimerTask() {
+                @Override
+                public void run() { // on timeout, commit text and start new letter
+                    InputConnection ic = getCurrentInputConnection();
+                    android.util.Log.d("timer", "new word timeout");
+                    if (morse.get(currentLetter) == null) {
+                        currentLetter = 0;
+                        android.util.Log.d("timer", "letter failed, new word cancelled");
+                        // TODO call error haptics
+                    } else {
+                        String letterString = morse.get(currentLetter);
+                        // TODO why don't I work if(keyboard.isShifted()){
+                        if(keyboard.isShifted()) {
+                            android.util.Log.d("shifttest","yup, totally shifted");
+                            letterString = letterString.toUpperCase();
+                            keyboard.setShifted(false);
+                        }
+                        ic.commitText(letterString + " ", 1);
+                        currentLetter = 0; // new letter
+                        newEntry = true; // resets time next press rather than guessing letter &c.
+                    }
                 }
-            }
-        }, (long)((ditTime/1000000)*5)); // set timer for new word after long pause (5 dits)
+            }, (long) ((ditTime / 1000000) * 6));   // set timer for new word after long pause (5 dits)
+                                                    // include extra tolerance of 1 dit for total 6-dit pause
 
-        if(timeDiff>10*ditTime) { // long press to restart letter
-            currentLetter = 0;
-            android.util.Log.d("morsekeyboard","reset letter");
-        } else if(timeDiff>2*ditTime) { // dah
-            currentLetter = 10 * currentLetter + 2;
-        } else { // dit
-            currentLetter = 10 * currentLetter + 1;
+            if (timeDiff > 10 * ditTime) { // long press to restart letter
+                currentLetter = 0;
+                android.util.Log.d("morsekeyboard", "reset letter");
+            } else if (timeDiff > 2 * ditTime) { // dah
+                currentLetter = 10 * currentLetter + 2;
+            } else { // dit
+                currentLetter = 10 * currentLetter + 1;
+            }
         }
     }
 
@@ -162,10 +207,6 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void swipeLeft() {
-        InputConnection ic = getCurrentInputConnection();
-        ic.deleteSurroundingText(1,0);
-        currentLetter = 0;
-        wordTimer.cancel();
     }
 
     @Override

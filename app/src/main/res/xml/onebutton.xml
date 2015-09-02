@@ -1,7 +1,10 @@
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyHeight="20%"
     android:keyWidth="100%">
-    <Row>
+    <Row android:keyHeight="5%">
+        <Key android:codes="67" android:keyLabel="Bksp" android:keyWidth="50%" />
+        <Key android:codes="-1" android:keyLabel="Shift" android:keyWidth="50%" android:isModifier="true" android:isSticky="true" />
+    </Row>
+    <Row android:keyHeight="20%">
         <Key android:codes="4" android:keyLabel="foo" />
     </Row>
 </Keyboard>
