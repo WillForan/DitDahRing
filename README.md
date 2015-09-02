@@ -18,6 +18,7 @@ There is a backspace key and a shift key. The shift will capitalize the next let
 ## Planned Features
 - Prosigns to implement behavior such as "repeat last word", "end transmission" (close keyboard and send), and newline
 - [Abbreviations](https://en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
+- Holding delete will make it delete more
 
 ## Possible Features
 I will probably never get to these but they'd be cool.

@@ -5,7 +5,7 @@
         android:icon="@mipmap/ic_launcher" android:theme="@style/AppTheme" android:debuggable="true">
         <!--TODO get rid of debuggable in above-->
         <service android:name=".MorseIME"
-            android:label="@string/morse_ime"
+            android:label="Morse Keyboard"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

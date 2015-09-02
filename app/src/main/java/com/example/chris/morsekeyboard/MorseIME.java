@@ -19,13 +19,12 @@ public class MorseIME extends InputMethodService
     private Keyboard keyboard;
     private long pressTime;
     private long releaseTime;
-    private long ditTime = 200000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
+    private long ditTime = 170000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
     // wikipedia says 50 ms for good people.TODO make this a setting
     private boolean newEntry; // used for starting new input to ignore preceding space
     private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
                                 // ex: 12 is A
                                 // long to not mess up on excessive dits/dahs
-    private boolean caps = false;
     private Timer wordTimer;
     private SparseArray<String> morse = new SparseArray<String>() {{
         put(12,"a");
@@ -92,6 +91,7 @@ public class MorseIME extends InputMethodService
 
         kv = (KeyboardView)getLayoutInflater().inflate(R.layout.keyboard, null);
         keyboard = new Keyboard(this, R.xml.onebutton);
+        keyboard.setShifted(true);
         kv.setKeyboard(keyboard);
         kv.setOnKeyboardActionListener(this);
         kv.setPreviewEnabled(false);
@@ -116,13 +116,14 @@ public class MorseIME extends InputMethodService
             currentLetter = 0;
             newEntry = true;
         } else if(primaryCode == Keyboard.KEYCODE_SHIFT) {
-            //keyboard.setShifted(true);
+            // TODO cancel timer but don't crash when none scheduled
         } else {
             pressTime = System.nanoTime();
             if (newEntry) {
                 newEntry = false; // time is recorded. Nothing else needed
             } else {
                 wordTimer.cancel();
+                android.util.Log.d("onPress","wordTimer cancelled");
                 long timeDiff = pressTime - releaseTime;
                 // new word 5 dit pauses handled by wordTimer started in onRelease() to move to next word
                 if (pressTime - releaseTime > 2 * ditTime) { // match 3 dit periods gap with tolerance of 1 dit for new letter
@@ -133,7 +134,6 @@ public class MorseIME extends InputMethodService
                         String letterString = morse.get(currentLetter);
                         // TODO why don't I work? if(keyboard.isShifted()) {
                         if(keyboard.isShifted()) {
-                            android.util.Log.d("shifttest","yup, totally shifted");
                             letterString = letterString.toUpperCase();
                             keyboard.setShifted(false);
                         }
@@ -152,15 +152,11 @@ public class MorseIME extends InputMethodService
     @Override
     public void onRelease(int primaryCode) {
         InputConnection ic = getCurrentInputConnection();
-        if(primaryCode == KeyEvent.KEYCODE_DEL) {
-            //delete (already handled in press)
-            // TODO get rid of me?
-        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) {
-            //keyboard.setShifted(false);
-        } else {
+        if(primaryCode == 4) {
             releaseTime = System.nanoTime();
             long timeDiff = releaseTime - pressTime;
             wordTimer = new Timer();
+            android.util.Log.d("onRelease","wordTimer scheduled");
             wordTimer.schedule(new TimerTask() {
                 @Override
                 public void run() { // on timeout, commit text and start new letter
@@ -172,9 +168,7 @@ public class MorseIME extends InputMethodService
                         // TODO call error haptics
                     } else {
                         String letterString = morse.get(currentLetter);
-                        // TODO why don't I work if(keyboard.isShifted()){
                         if(keyboard.isShifted()) {
-                            android.util.Log.d("shifttest","yup, totally shifted");
                             letterString = letterString.toUpperCase();
                             keyboard.setShifted(false);
                         }
