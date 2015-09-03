@@ -11,7 +11,7 @@ If you have Android Studio, enable developer mode on your phone, connect it via 
 ## Usage
 Tap Morse code into the foo button. This keyboard uses the international variant of morse code including punctuation.
 
-A dit or "." is currently set to .2 seconds. This will be configurable in a later update. A dah, dash, or, "-" is 3 dit periods. Dits and dahs are separated by the period of one dit. Letters are separated by 3 dit periods and words are separated by 5 dit periods.
+A dit or "." is currently set to .17 seconds. This will be configurable in a later update. A dah, dash, or, "-" is 3 dit periods. Dits and dahs are separated by the period of one dit. Letters are separated by 3 dit periods and words are separated by 5 dit periods.
 
 There is a backspace key and a shift key. The shift will capitalize the next letter.
 
@@ -22,14 +22,13 @@ The characters ".", ",", ";", ":", "!", and "?" will be placed before a precedin
 - Prosigns to implement behavior such as "repeat last word", "end transmission" (close keyboard and send), and newline
 - [Abbreviations](https://en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
 - Holding delete will make it delete more
+- Space bar or some method of adding spaces. An idea I had would be holding the foo button past the - length.
 
 ## Possible Features
 I will probably never get to these but they'd be cool.
 - Automatic timing detection
-- Automatic capitalization
 - Non-English characters
 - Caps lock
 
 ## Known Bugs
 - The shift indicator light doesn't update when it switches back to lower case
-- Sometimes the word end timer triggers despite input that should cancel it. For example, when typing O (---) it may stop at M (--) and put the extra - into a new letter, usually T (-) if you stop.

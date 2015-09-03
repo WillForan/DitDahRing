@@ -7,12 +7,14 @@ package com.example.chris.morsekeyboard;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.Keyboard;
+import android.os.Handler;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import java.util.Timer;
 import java.util.TimerTask;
+
 
 public class MorseIME extends InputMethodService
     implements KeyboardView.OnKeyboardActionListener{
@@ -25,7 +27,38 @@ public class MorseIME extends InputMethodService
     private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
                                 // ex: 12 is A
                                 // long to not mess up on excessive dits/dahs
-    private Timer wordTimer;
+    //private Timer wordTimer;
+    private Handler wordHandler = new Handler();
+    private Runnable wordTimeout = new Runnable() {
+        @Override
+        public void run() {
+            InputConnection ic = getCurrentInputConnection();
+            android.util.Log.d("wordHandler", "new word timeout");
+            if (morse.get(currentLetter) == null) {
+                currentLetter = 0;
+                android.util.Log.d("wordHandler", "letter failed, new word cancelled");
+                // TODO call error haptics
+            } else {
+                String letterString = morse.get(currentLetter);
+                if (keyboard.isShifted()) {
+                    letterString = letterString.toUpperCase();
+                    keyboard.setShifted(false);
+                }
+                if (punctuation.contains(letterString)) { // put punctuation before space
+                    if (" ".equals(ic.getTextBeforeCursor(1, 0))) {
+                        ic.deleteSurroundingText(1, 0);
+                        ic.commitText(letterString + " ", 1);
+                    }
+                } else ic.commitText(letterString + " ", 1);
+                if (capitalizeAfter.contains(letterString)) {
+                    keyboard.setShifted(true);
+                }
+                currentLetter = 0; // new letter
+                newEntry = true; // resets time next press rather than guessing letter &c.
+            }
+        }
+    };
+
     private SparseArray<String> morse = new SparseArray<String>() {{
         put(12,"a");
         put(2111,"b");
@@ -83,8 +116,8 @@ public class MorseIME extends InputMethodService
         put(122121,"@");
     }};
     // TODO prosigns
-    // TODO automatic capitalization
     private String punctuation = ".,:;!?"; // punctuation that shouldn't be after a space.
+    private String capitalizeAfter = ".!?";
 
     @Override
     public View onCreateInputView() {
@@ -123,7 +156,8 @@ public class MorseIME extends InputMethodService
             if (newEntry) {
                 newEntry = false; // time is recorded. Nothing else needed
             } else {
-                wordTimer.cancel();
+                //wordTimer.cancel();
+                wordHandler.removeCallbacks(wordTimeout);
                 //android.util.Log.d("onPress","wordTimer cancelled");
                 long timeDiff = pressTime - releaseTime;
                 // new word 5 dit pauses handled by wordTimer started in onRelease() to move to next word
@@ -139,11 +173,14 @@ public class MorseIME extends InputMethodService
                             keyboard.setShifted(false);
                         }
                         if(punctuation.contains(letterString)) { // put punctuation before space
-                            if(" ".equals(ic.getTextBeforeCursor(1,0))) {
-                                ic.deleteSurroundingText(1,0);
+                            if(" ".equals(ic.getTextBeforeCursor(1, 0))) {
+                                ic.deleteSurroundingText(1, 0);
                                 ic.commitText(letterString + " ", 1);
                             }
                         } else ic.commitText(letterString, 1);
+                        if(capitalizeAfter.contains(letterString)) {
+                            keyboard.setShifted(true);
+                        }
                         newEntry = true; // resets time next press rather than guessing letter &c.
                     }
                     currentLetter = 0; // clear letter
@@ -161,8 +198,7 @@ public class MorseIME extends InputMethodService
         if(primaryCode == 4) {
             releaseTime = System.nanoTime();
             long timeDiff = releaseTime - pressTime;
-            wordTimer = new Timer();
-            //android.util.Log.d("onRelease","wordTimer scheduled");
+            /*wordTimer = new Timer();
             wordTimer.schedule(new TimerTask() {
                 @Override
                 public void run() { // on timeout, commit text and start new letter
@@ -179,18 +215,22 @@ public class MorseIME extends InputMethodService
                             keyboard.setShifted(false);
                         }
                         if(punctuation.contains(letterString)) { // put punctuation before space
-                            if(" ".equals(ic.getTextBeforeCursor(1,0))) {
-                                ic.deleteSurroundingText(1,0);
+                            if(" ".equals(ic.getTextBeforeCursor(1, 0))) {
+                                ic.deleteSurroundingText(1, 0);
                                 ic.commitText(letterString + " ", 1);
                             }
                         } else ic.commitText(letterString + " ", 1);
+                        if(capitalizeAfter.contains(letterString)) {
+                            keyboard.setShifted(true);
+                        }
                         currentLetter = 0; // new letter
                         newEntry = true; // resets time next press rather than guessing letter &c.
                     }
                 }
             }, (long) ((ditTime / 1000000) * 6));   // set timer for new word after long pause (5 dits)
                                                     // include extra tolerance of 1 dit for total 6-dit pause
-
+            */
+            wordHandler.postDelayed(wordTimeout,(ditTime/1000000) * 6);
             if (timeDiff > 10 * ditTime) { // long press to restart letter
                 currentLetter = 0;
                 android.util.Log.d("morsekeyboard", "reset letter");
