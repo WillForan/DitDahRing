@@ -84,6 +84,7 @@ public class MorseIME extends InputMethodService
     }};
     // TODO prosigns
     // TODO automatic capitalization
+    private String punctuation = ".,:;!?"; // punctuation that shouldn't be after a space.
 
     @Override
     public View onCreateInputView() {
@@ -123,7 +124,7 @@ public class MorseIME extends InputMethodService
                 newEntry = false; // time is recorded. Nothing else needed
             } else {
                 wordTimer.cancel();
-                android.util.Log.d("onPress","wordTimer cancelled");
+                //android.util.Log.d("onPress","wordTimer cancelled");
                 long timeDiff = pressTime - releaseTime;
                 // new word 5 dit pauses handled by wordTimer started in onRelease() to move to next word
                 if (pressTime - releaseTime > 2 * ditTime) { // match 3 dit periods gap with tolerance of 1 dit for new letter
@@ -132,12 +133,17 @@ public class MorseIME extends InputMethodService
                         // TODO call error haptics, should ignore input for short time so user notices failure
                     } else {
                         String letterString = morse.get(currentLetter);
-                        // TODO why don't I work? if(keyboard.isShifted()) {
+
                         if(keyboard.isShifted()) {
                             letterString = letterString.toUpperCase();
                             keyboard.setShifted(false);
                         }
-                        ic.commitText(letterString, 1);
+                        if(punctuation.contains(letterString)) { // put punctuation before space
+                            if(" ".equals(ic.getTextBeforeCursor(1,0))) {
+                                ic.deleteSurroundingText(1,0);
+                                ic.commitText(letterString + " ", 1);
+                            }
+                        } else ic.commitText(letterString, 1);
                         newEntry = true; // resets time next press rather than guessing letter &c.
                     }
                     currentLetter = 0; // clear letter
@@ -156,7 +162,7 @@ public class MorseIME extends InputMethodService
             releaseTime = System.nanoTime();
             long timeDiff = releaseTime - pressTime;
             wordTimer = new Timer();
-            android.util.Log.d("onRelease","wordTimer scheduled");
+            //android.util.Log.d("onRelease","wordTimer scheduled");
             wordTimer.schedule(new TimerTask() {
                 @Override
                 public void run() { // on timeout, commit text and start new letter
@@ -172,7 +178,12 @@ public class MorseIME extends InputMethodService
                             letterString = letterString.toUpperCase();
                             keyboard.setShifted(false);
                         }
-                        ic.commitText(letterString + " ", 1);
+                        if(punctuation.contains(letterString)) { // put punctuation before space
+                            if(" ".equals(ic.getTextBeforeCursor(1,0))) {
+                                ic.deleteSurroundingText(1,0);
+                                ic.commitText(letterString + " ", 1);
+                            }
+                        } else ic.commitText(letterString + " ", 1);
                         currentLetter = 0; // new letter
                         newEntry = true; // resets time next press rather than guessing letter &c.
                     }

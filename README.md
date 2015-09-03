@@ -15,6 +15,9 @@ A dit or "." is currently set to .2 seconds. This will be configurable in a late
 
 There is a backspace key and a shift key. The shift will capitalize the next letter.
 
+## Miscellaneous
+The characters ".", ",", ";", ":", "!", and "?" will be placed before a preceding space. Currently it does not handle multiple spaces.
+
 ## Planned Features
 - Prosigns to implement behavior such as "repeat last word", "end transmission" (close keyboard and send), and newline
 - [Abbreviations](https://en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
@@ -23,7 +26,7 @@ There is a backspace key and a shift key. The shift will capitalize the next let
 ## Possible Features
 I will probably never get to these but they'd be cool.
 - Automatic timing detection
-- Automatic capitalization and formatting of punctuation
+- Automatic capitalization
 - Non-English characters
 - Caps lock
 
