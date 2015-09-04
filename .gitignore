@@ -8,4 +8,4 @@
 /app/build/**
 !/app/build/output/
 /app/build/output/*
-!/app/build/output/apk/
+!/app/build/output/apk/*
