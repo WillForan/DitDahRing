@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<input-method xmlns:android="http://schemas.android.com/apk/res/android">
-    <subtype
-        android:label="Morse Keyboard"
-        android:imeSubtypeLocale="en_US"
-        android:imeSubtypeMode="keyboard" />
-</input-method><!-- From: file:/home/chris/AndroidStudioProjects/MorseKeyboard/app/src/main/res/xml/method.xml -->
