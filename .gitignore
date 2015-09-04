@@ -4,5 +4,7 @@
 /.idea/libraries
 .DS_Store
 /build
-!/app/build/output/apk
+!/app/build/
+!/app/build/output/
+!/app/build/output/apk/*
 /captures
