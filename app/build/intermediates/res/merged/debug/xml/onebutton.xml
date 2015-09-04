@@ -1,0 +1,12 @@
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="100%">
+    <Row android:keyHeight="5%">
+        <Key android:codes="67" android:keyLabel="Bksp" android:keyWidth="30%" android:isRepeatable="true" />
+        <Key android:codes="62" android:keyLabel="Space" android:keyWidth="40%" />
+        <Key android:codes="-1" android:keyLabel="Shift" android:keyWidth="30%" android:isModifier="true" android:isSticky="true" />
+    </Row>
+    <Row android:keyHeight="20%">
+        <Key android:codes="4" android:keyLabel="foo" />
+    </Row>
+</Keyboard>
+<!--TODO make delete and shift and special characters/emoticons also probably change the name of the keyboard layout appropriately--><!-- From: file:/home/chris/AndroidStudioProjects/MorseKeyboard/app/src/main/res/xml/onebutton.xml -->
