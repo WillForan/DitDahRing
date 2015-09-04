@@ -13,16 +13,14 @@ Tap Morse code into the foo button. This keyboard uses the international variant
 
 A dit or "." is currently set to .17 seconds. This will be configurable in a later update. A dah, dash, or, "-" is 3 dit periods. Dits and dahs are separated by the period of one dit. Letters are separated by 3 dit periods and words are separated by 5 dit periods.
 
-There is a backspace key and a shift key. The shift will capitalize the next letter.
-
+The spacebar, delete, and shift work about how you would expect. If you have a partially entered letter, they will cancel it as well.
 ## Miscellaneous
 The characters ".", ",", ";", ":", "!", and "?" will be placed before a preceding space. Currently it does not handle multiple spaces.
 
 ## Planned Features
 - Prosigns to implement behavior such as "repeat last word", "end transmission" (close keyboard and send), and newline
 - [Abbreviations](https://en.wikipedia.org/wiki/Morse_code_abbreviations), possibly with configuration options
-- Holding delete will make it delete more
-- Space bar or some method of adding spaces. An idea I had would be holding the foo button past the - length.
+- I don't know why holding the delete key doesn't make it repeat. I set isRepeatable to true.
 
 ## Possible Features
 I will probably never get to these but they'd be cool.

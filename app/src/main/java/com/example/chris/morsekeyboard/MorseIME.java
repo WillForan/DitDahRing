@@ -47,8 +47,8 @@ public class MorseIME extends InputMethodService
                 if (punctuation.contains(letterString)) { // put punctuation before space
                     if (" ".equals(ic.getTextBeforeCursor(1, 0))) {
                         ic.deleteSurroundingText(1, 0);
-                        ic.commitText(letterString + " ", 1);
                     }
+                    ic.commitText(letterString + " ", 1);
                 } else ic.commitText(letterString + " ", 1);
                 if (capitalizeAfter.contains(letterString)) {
                     keyboard.setShifted(true);
@@ -135,6 +135,13 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
+        if(primaryCode == Keyboard.KEYCODE_DELETE) {
+            InputConnection ic = getCurrentInputConnection();
+            ic.deleteSurroundingText(1, 0);
+            wordHandler.removeCallbacks(wordTimeout);
+            currentLetter = 0;
+            newEntry = true;
+        }
         if(primaryCode==Keyboard.KEYCODE_SHIFT) {
             keyboard.setShifted(!keyboard.isShifted());
         }
@@ -143,14 +150,15 @@ public class MorseIME extends InputMethodService
     @Override
     public void onPress(int primaryCode) {
         InputConnection ic = getCurrentInputConnection();
-        if(primaryCode == KeyEvent.KEYCODE_DEL) {
-            ic.deleteSurroundingText(1, 0);
-            // TODO cancel timer but don't crash when none scheduled
-            // wordTimer.cancel();
+        if(primaryCode == KeyEvent.KEYCODE_DEL) { // handled in onKey because it repeats
+
+        } else if(primaryCode == KeyEvent.KEYCODE_SPACE) {
+            ic.commitText(" ",1);
+            wordHandler.removeCallbacks(wordTimeout);
             currentLetter = 0;
             newEntry = true;
-        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) {
-            // TODO cancel timer but don't crash when none scheduled
+        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) { // TODO: should this cancel a letter?
+            wordHandler.removeCallbacks(wordTimeout);
         } else {
             pressTime = System.nanoTime();
             if (newEntry) {
@@ -167,7 +175,6 @@ public class MorseIME extends InputMethodService
                         // TODO call error haptics, should ignore input for short time so user notices failure
                     } else {
                         String letterString = morse.get(currentLetter);
-
                         if(keyboard.isShifted()) {
                             letterString = letterString.toUpperCase();
                             keyboard.setShifted(false);
@@ -185,8 +192,8 @@ public class MorseIME extends InputMethodService
                     }
                     currentLetter = 0; // clear letter
                 } //else { // match anything shorter, just one dit period
-                    // dit time gap. Only for continuing current letter
-                    // time already recorded. Don't need to do anything
+                // dit time gap. Only for continuing current letter
+                // time already recorded. Don't need to do anything
                 //}
             }
         }
@@ -198,6 +205,7 @@ public class MorseIME extends InputMethodService
         if(primaryCode == 4) {
             releaseTime = System.nanoTime();
             long timeDiff = releaseTime - pressTime;
+            // I'm keeping the following commented code in case I have to go back.
             /*wordTimer = new Timer();
             wordTimer.schedule(new TimerTask() {
                 @Override
