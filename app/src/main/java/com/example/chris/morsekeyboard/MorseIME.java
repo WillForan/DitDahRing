@@ -166,14 +166,14 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
-        if(primaryCode == KeyEvent.KEYCODE_DEL) {
+        if(primaryCode == Keyboard.KEYCODE_DELETE) {
             InputConnection ic = getCurrentInputConnection();
             ic.deleteSurroundingText(1, 0);
             wordHandler.removeCallbacks(wordTimeout);
             currentLetter = 0;
             newEntry = true;
         }
-        if(primaryCode==KeyEvent.KEYCODE_SHIFT_LEFT) {
+        if(primaryCode==Keyboard.KEYCODE_SHIFT) {
             keyboard.setShifted(!keyboard.isShifted());
         }
     }
