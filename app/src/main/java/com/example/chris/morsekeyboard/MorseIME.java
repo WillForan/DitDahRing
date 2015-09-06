@@ -4,10 +4,12 @@ package com.example.chris.morsekeyboard;
  * Morse code IME
  */
 
+import android.content.Context;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.Keyboard;
 import android.os.Handler;
+import android.os.Vibrator;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,14 +23,13 @@ public class MorseIME extends InputMethodService
     private Keyboard keyboard;
     private long pressTime;
     private long releaseTime;
-    private long ditTime = 150000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
+    private long ditTime = 120000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
     // wikipedia says 50 ms for good people. TODO make this a setting
+    private long ditMillis = ditTime/1000000;
     private boolean newEntry; // used for starting new input to ignore preceding space
     private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
                                 // ex: 12 is A
                                 // long to not mess up on excessive dits/dahs
-
-
 
     private SparseArray<String> morse = new SparseArray<String>() {{
         put(12,"a");
@@ -95,7 +96,8 @@ public class MorseIME extends InputMethodService
         @Override
         public void run() {
             InputConnection ic = getCurrentInputConnection();
-            android.util.Log.d("wordHandler", "new word timeout");
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            v.vibrate(10);
             if(releaseTime-pressTime < 2 * ditTime) { // previous was a dit
                 currentLetter = currentLetter * 10 + 1;
             } else { // previous was a dah
@@ -110,7 +112,9 @@ public class MorseIME extends InputMethodService
     public void letterCommit(int letterKey, boolean newWord) {
         InputConnection ic = getCurrentInputConnection();
         if(morse.get(letterKey) == null) {
-            //TODO call error haptics
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            long[] pattern = {0,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50}; // error prosign
+            v.vibrate(pattern,-1);
             android.util.Log.d("letterCommit","Letter failed.");
         } else {
             String letterString = morse.get(letterKey);
@@ -141,7 +145,6 @@ public class MorseIME extends InputMethodService
     @Override
     public View onCreateInputView() {
         KeyboardView kv;
-
         kv = (KeyboardView)getLayoutInflater().inflate(R.layout.keyboard, null);
         keyboard = new Keyboard(this, R.xml.onebutton);
         keyboard.setShifted(true);
@@ -151,6 +154,15 @@ public class MorseIME extends InputMethodService
         newEntry = true;
         return kv;
     }
+
+    /* Really cool prosign when you open the keyboard. Also super obnoxious.
+    @Override
+    public void onWindowShown() {
+        Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        long[] pattern = {0,150,50,50,50,150}; // "K" invitation to transmit prosign
+        v.vibrate(pattern,-1);
+    }
+    */
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
@@ -189,7 +201,7 @@ public class MorseIME extends InputMethodService
                 if (pressTime - prevPressTime < 3 * ditTime) { // previous press was a dit
                     currentLetter = currentLetter * 10 + 1;
                 } else if(pressTime - prevPressTime < 5 * ditTime) { //  previous dah+short pause or previous dit+letter separation pause
-                    if(pressTime - releaseTime < 2 * ditTime) { // previous dah+short pause
+                    if(releaseTime-prevPressTime > 2 * ditTime) { // previous dah+short pause
                         currentLetter = currentLetter * 10 + 2;
                     } else { // previous dit+letter separation pause
                         currentLetter = currentLetter * 10 + 1;
@@ -210,10 +222,12 @@ public class MorseIME extends InputMethodService
         if(primaryCode == 4) {
             releaseTime = System.nanoTime();
             if(releaseTime-pressTime < 2 * ditTime) { // previous press was a dit, new word is 6 ditTime from the press
-                wordHandler.postDelayed(wordTimeout, 6*(ditTime/1000000) - pressTime/1000000 + releaseTime/1000000);
+                wordHandler.postDelayed(wordTimeout, 6*ditMillis - pressTime/1000000 + releaseTime/1000000);
             } else if(releaseTime-pressTime < 6 * ditTime) { // previous press was a dah, new word is 8 ditTime from the press
-                wordHandler.postDelayed(wordTimeout, 8*(ditTime/1000000) - pressTime/1000000 + releaseTime/1000000);
+                wordHandler.postDelayed(wordTimeout, 8*ditMillis - pressTime/1000000 + releaseTime/1000000);
             } else { // long press to cancel letter if you know you messed up
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                v.vibrate(10);
                 currentLetter = 0;
                 newEntry = true;
             }
