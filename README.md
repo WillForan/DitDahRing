@@ -40,3 +40,4 @@ I will probably never get to these but they'd be cool.
 
 ## Known Bugs
 - The shift indicator light doesn't update when it switches back to lower case
+- There is probably a lot of weird edge case bugs for when shift is pressed before a word timeout
