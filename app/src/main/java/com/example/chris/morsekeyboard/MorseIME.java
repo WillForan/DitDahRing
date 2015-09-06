@@ -166,9 +166,7 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
-        android.util.Log.d("onKey", String.valueOf(primaryCode));
         if(primaryCode == KeyEvent.KEYCODE_DEL) {
-            android.util.Log.d("onKey", "delete");
             InputConnection ic = getCurrentInputConnection();
             ic.deleteSurroundingText(1, 0);
             wordHandler.removeCallbacks(wordTimeout);
@@ -201,7 +199,7 @@ public class MorseIME extends InputMethodService
                 if (pressTime - prevPressTime < 3 * ditTime) { // previous press was a dit
                     currentLetter = currentLetter * 10 + 1;
                 } else if(pressTime - prevPressTime < 5 * ditTime) { //  previous dah+short pause or previous dit+letter separation pause
-                    if(releaseTime-prevPressTime > 2 * ditTime) { // previous dah+short pause
+                    if(releaseTime - prevPressTime > 2 * ditTime) { // previous dah+short pause
                         currentLetter = currentLetter * 10 + 2;
                     } else { // previous dit+letter separation pause
                         currentLetter = currentLetter * 10 + 1;
