@@ -21,15 +21,13 @@ import java.util.TimerTask;
 public class MorseIME extends InputMethodService
     implements KeyboardView.OnKeyboardActionListener{
     private Keyboard keyboard;
-    private long pressTime;
-    private long releaseTime;
     private long ditTime = 120000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
     // wikipedia says 50 ms for good people. TODO make this a setting
     private long ditMillis = ditTime/1000000;
-    private boolean newEntry; // used for starting new input to ignore preceding space
     private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
                                 // ex: 12 is A
                                 // long to not mess up on excessive dits/dahs
+    private int nextPressAction = 0; // 0 for new dit/dah within letter, 1 for new letter within word, 2 for new word
 
     private SparseArray<String> morse = new SparseArray<String>() {{
         put(12,"a");
@@ -87,60 +85,102 @@ public class MorseIME extends InputMethodService
         put(1112112,"$");
         put(122121,"@");
     }};
-    // TODO prosigns
-    private static final String punctuation = ".,:;!?"; // punctuation that shouldn't be after a space.
-    private static final String capitalizeAfter = ".!?";
+
+    private static final String punctuation = ".,:;!?"; // punctuation that usually has no space before and space after
+    private static final String capitalizeAfter = ".!?"; // punctuation after which you use a capital letter
 
     private Handler wordHandler = new Handler();
-    /*private Runnable wordTimeout = new Runnable() {
+
+    private void wordStart()    {
+        letterStart();
+    }
+
+    private void letterStart()  {
+        //initialize letter variables
+        currentLetter = 0;
+        getCurrentInputConnection().commitText(" ", 1); // put a space here because ditDahStart blindly updates the character before the cursor
+        ditDahStart();
+    }
+
+    private void ditDahStart()  {
+        //dit/dah detection timing
+        nextPressAction = 0; // next action will be the same letter still, unless changed later
+        currentLetter = currentLetter * 10 + 1; //append an assumed dit to the current letter
+        String currentLetterString = morse.get(currentLetter,"");
+        if(keyboard.isShifted() == true) currentLetterString = currentLetterString.toUpperCase();
+        InputConnection ic = getCurrentInputConnection();
+        ic.deleteSurroundingText(1, 0);
+        ic.commitText(currentLetterString,1);
+        wordHandler.postDelayed(ditPressTimeout, 2 * ditMillis); //cancelled by onRelease to finish dit
+    }
+
+    private Runnable ditPressTimeout = new Runnable() {
         @Override
         public void run() {
-            InputConnection ic = getCurrentInputConnection();
-            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            v.vibrate(10);
-            if(releaseTime-pressTime < 2 * ditTime) { // previous was a dit
-                currentLetter = currentLetter * 10 + 1;
-            } else { // previous was a dah
-                currentLetter = currentLetter * 10 + 2;
-            }
-            letterCommit(currentLetter, true);
-            currentLetter = 0;
-            newEntry = true;
-        }
-    };*/
+            //optional vibration feedback when you've passed max dit time
+            //Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            //v.vibrate(10);
 
-    /*public void letterCommit(int letterKey, boolean newWord) {
-        InputConnection ic = getCurrentInputConnection();
-        if(morse.get(letterKey) == null) {
-            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            long[] pattern = {0,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50}; // error prosign
-            v.vibrate(pattern,-1);
-            android.util.Log.d("letterCommit","Letter failed.");
-        } else {
-            String letterString = morse.get(letterKey);
-            if (keyboard.isShifted()) {
-                letterString = letterString.toUpperCase();
-                keyboard.setShifted(false);
+            //correct to dah
+            currentLetter = currentLetter+1;
+            String currentLetterString = morse.get(currentLetter,"");
+            if(keyboard.isShifted() == true) currentLetterString = currentLetterString.toUpperCase();
+            InputConnection ic = getCurrentInputConnection();
+            ic.deleteSurroundingText(1, 0); // delete the letter in output we're working on ...
+            ic.commitText(currentLetterString,1); // ... and replace it with the corrected one
+            wordHandler.postDelayed(longPressTimeout, 8 * ditMillis); //cancelled by a release, total of 10 dit hold ditPressTimeout + longPressTimeout
+        }
+    };
+
+    private Runnable longPressTimeout = new Runnable()    {
+        //long hold to cancel current letter (and therefore not a dah)
+        //delete letter, send error vibration feedback, wait for release
+        @Override
+        public void run()   {
+            getCurrentInputConnection().deleteSurroundingText(1, 0);
+            // todo send error feedback
+            nextPressAction = 1; // next press will start a new letter without leaving the word
+        }
+    };
+
+    private void spaceStart()   {
+        wordHandler.postDelayed(letterSpaceTimeout, 2 * ditMillis); //cancelled by a press
+    }
+
+    private Runnable letterSpaceTimeout = new Runnable()    {
+        // the space is too long to stay in the current letter
+        @Override
+        public void run()   {
+            nextPressAction = 1;
+            wordHandler.postDelayed(wordSpaceTimeout, 2 * ditMillis); //cancelled by a press, total of 4 dits letterSpaceTimeout + wordSpaceTimeout
+            InputConnection ic = getCurrentInputConnection();
+            String currentLetterString = morse.get(currentLetter,"");
+            if(keyboard.isShifted())    {
+                currentLetterString = currentLetterString.toUpperCase();
+                keyboard.setShifted(false); // Finished capitalizing, now next letter is lower case
             }
-            if (punctuation.contains(letterString)) { // put punctuation before a space
-                if (" ".equals(ic.getTextBeforeCursor(1, 0))) {
-                    ic.deleteSurroundingText(1, 0);
-                    ic.commitText(letterString + " ", 1);
-                } else {
-                    ic.commitText(letterString + " ", 1);
-                }
-            } else {
-                if (newWord) {
-                    ic.commitText(letterString + " ", 1);
-                } else {
-                    ic.commitText(letterString, 1);
+            if(punctuation.contains(currentLetterString))  {
+                if(ic.getTextBeforeCursor(2, 0).charAt(0) == ' ')  {
+                    ic.deleteSurroundingText(2, 0);
+                    ic.commitText(currentLetterString, 1); // punctuation goes before space
+                } else  {
+                    ic.commitText(currentLetterString, 1);
                 }
             }
-            if (capitalizeAfter.contains(letterString)) {
+            if(capitalizeAfter.contains(currentLetterString))  {
                 keyboard.setShifted(true);
             }
         }
-    }*/
+    };
+
+    private Runnable wordSpaceTimeout = new Runnable() {
+        // the space is too long to stay in the current word
+        @Override
+        public void run() {
+            nextPressAction = 2;
+            getCurrentInputConnection().commitText(" ", 1);
+        }
+    };
 
     @Override
     public View onCreateInputView() {
@@ -151,11 +191,10 @@ public class MorseIME extends InputMethodService
         kv.setKeyboard(keyboard);
         kv.setOnKeyboardActionListener(this);
         kv.setPreviewEnabled(false);
-        newEntry = true;
         return kv;
     }
 
-    /* Really cool prosign when you open the keyboard. Also super obnoxious.
+    /* Really cool prosign feedback when you open the keyboard. Also super obnoxious.
     @Override
     public void onWindowShown() {
         Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -166,72 +205,46 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
+        // delete lives here because it repeats and messes stuff up
         if(primaryCode == Keyboard.KEYCODE_DELETE) {
-            InputConnection ic = getCurrentInputConnection();
-            ic.deleteSurroundingText(1, 0);
-            wordHandler.removeCallbacks(wordTimeout);
-            currentLetter = 0;
-            newEntry = true;
-        }
-        if(primaryCode==Keyboard.KEYCODE_SHIFT) {
-            keyboard.setShifted(!keyboard.isShifted());
+            getCurrentInputConnection().deleteSurroundingText(1, 0);
+            //getCurrentInputConnection().commitText("foo",1);
+            nextPressAction = 1;
         }
     }
 
     @Override
     public void onPress(int primaryCode) {
-        /*if(primaryCode == KeyEvent.KEYCODE_SPACE) {
+        wordHandler.removeCallbacks(letterSpaceTimeout);
+        wordHandler.removeCallbacks(wordSpaceTimeout);
+        if(primaryCode == KeyEvent.KEYCODE_SPACE) {
             getCurrentInputConnection().commitText(" ", 1);
-            wordHandler.removeCallbacks(wordTimeout);
-            currentLetter = 0;
-            newEntry = true;
-        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) { // TODO: should this cancel a letter?
-            wordHandler.removeCallbacks(wordTimeout);      // TODO: should this even cancel the word handler?
-        } else if(primaryCode != KeyEvent.KEYCODE_DEL) { // delete is done in onKey because it repeats
-                                                         // Only the letter button after this point
-            wordHandler.removeCallbacks(wordTimeout);
-            if(newEntry) {
-                pressTime = System.nanoTime();
-                newEntry = false;
-            } else {
-                long prevPressTime = pressTime;
-                pressTime = System.nanoTime();
-                if (pressTime - prevPressTime < 3 * ditTime) { // previous press was a dit
-                    currentLetter = currentLetter * 10 + 1;
-                } else if(pressTime - prevPressTime < 5 * ditTime) { //  previous dah+short pause or previous dit+letter separation pause
-                    if(releaseTime - prevPressTime > 2 * ditTime) { // previous dah+short pause
-                        currentLetter = currentLetter * 10 + 2;
-                    } else { // previous dit+letter separation pause
-                        currentLetter = currentLetter * 10 + 1;
-                        letterCommit(currentLetter,false);
-                        currentLetter = 0;
-                    }
-                } else { //anything left not handled by wordHandler is a dah+letter separation pause
-                    currentLetter = currentLetter * 10 + 2;
-                    letterCommit(currentLetter,false);
-                    currentLetter = 0;
-                }
+            nextPressAction = 2; // next morse key press is going to be a new word
+        } else if(primaryCode == Keyboard.KEYCODE_SHIFT) { // TODO: should this cancel a letter or finish the current one?
+            keyboard.setShifted(!keyboard.isShifted());
+            // TODO I don't think I actually do capital letters yet.
+        } else if(primaryCode != Keyboard.KEYCODE_DELETE) { // delete is done in onKey because it repeats
+                                                         // must be the morse key after this point
+
+            switch (nextPressAction)    {
+                case 0: ditDahStart();
+                    break;
+                case 1: letterStart();
+                    break;
+                case 2: wordStart();
+                    break;
             }
-        }*/
+        }
     }
 
     @Override
     public void onRelease(int primaryCode) {
-        /*if(primaryCode == 4) {
-            releaseTime = System.nanoTime();
-            if(releaseTime-pressTime < 2 * ditTime) { // previous press was a dit, new word is 6 ditTime from the press
-                wordHandler.postDelayed(wordTimeout, 6*ditMillis - pressTime/1000000 + releaseTime/1000000);
-            } else if(releaseTime-pressTime < 6 * ditTime) { // previous press was a dah, new word is 8 ditTime from the press
-                wordHandler.postDelayed(wordTimeout, 8*ditMillis - pressTime/1000000 + releaseTime/1000000);
-            } else { // long press to cancel letter if you know you messed up
-                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                v.vibrate(10);
-                currentLetter = 0;
-                newEntry = true;
-            }
-        }*/
+        wordHandler.removeCallbacks(ditPressTimeout);
+        wordHandler.removeCallbacks(longPressTimeout);
+        if(primaryCode == 4) {
+            spaceStart();
+        }
     }
-
 
     @Override
     public void onText(CharSequence text) {
