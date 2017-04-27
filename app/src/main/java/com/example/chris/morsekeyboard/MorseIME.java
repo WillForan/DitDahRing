@@ -92,7 +92,7 @@ public class MorseIME extends InputMethodService
     private static final String capitalizeAfter = ".!?";
 
     private Handler wordHandler = new Handler();
-    private Runnable wordTimeout = new Runnable() {
+    /*private Runnable wordTimeout = new Runnable() {
         @Override
         public void run() {
             InputConnection ic = getCurrentInputConnection();
@@ -107,9 +107,9 @@ public class MorseIME extends InputMethodService
             currentLetter = 0;
             newEntry = true;
         }
-    };
+    };*/
 
-    public void letterCommit(int letterKey, boolean newWord) {
+    /*public void letterCommit(int letterKey, boolean newWord) {
         InputConnection ic = getCurrentInputConnection();
         if(morse.get(letterKey) == null) {
             Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -140,7 +140,7 @@ public class MorseIME extends InputMethodService
                 keyboard.setShifted(true);
             }
         }
-    }
+    }*/
 
     @Override
     public View onCreateInputView() {
@@ -180,7 +180,7 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void onPress(int primaryCode) {
-        if(primaryCode == KeyEvent.KEYCODE_SPACE) {
+        /*if(primaryCode == KeyEvent.KEYCODE_SPACE) {
             getCurrentInputConnection().commitText(" ", 1);
             wordHandler.removeCallbacks(wordTimeout);
             currentLetter = 0;
@@ -212,12 +212,12 @@ public class MorseIME extends InputMethodService
                     currentLetter = 0;
                 }
             }
-        }
+        }*/
     }
 
     @Override
     public void onRelease(int primaryCode) {
-        if(primaryCode == 4) {
+        /*if(primaryCode == 4) {
             releaseTime = System.nanoTime();
             if(releaseTime-pressTime < 2 * ditTime) { // previous press was a dit, new word is 6 ditTime from the press
                 wordHandler.postDelayed(wordTimeout, 6*ditMillis - pressTime/1000000 + releaseTime/1000000);
@@ -229,7 +229,7 @@ public class MorseIME extends InputMethodService
                 currentLetter = 0;
                 newEntry = true;
             }
-        }
+        }*/
     }
 
 
