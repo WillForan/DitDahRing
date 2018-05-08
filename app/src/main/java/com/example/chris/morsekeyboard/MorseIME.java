@@ -14,6 +14,8 @@ import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
+import android.widget.Toast;
+
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -26,6 +28,7 @@ public class MorseIME extends InputMethodService
     private long ditTime = 120000000; // time of a dit in nanoseconds, space between dit/dahs, 1/3 dah, 1/3 space between letters, 1/5 space between words
     // wikipedia says 50 ms for good people. TODO make this a setting
     private long ditMillis = ditTime/1000000;
+    private boolean spaceAtWordEnd = false; // show characters instead of words -- means space is funny
     private boolean newEntry; // used for starting new input to ignore preceding space
     private int currentLetter;  // horrendous implementation; each digit 0 for unused, 1 for dit, 2 for dah
                                 // ex: 12 is A
@@ -92,23 +95,28 @@ public class MorseIME extends InputMethodService
     private static final String capitalizeAfter = ".!?";
 
     private Handler wordHandler = new Handler();
+    // timer for letters/words
     private Runnable wordTimeout = new Runnable() {
         @Override
         public void run() {
             InputConnection ic = getCurrentInputConnection();
             Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
             v.vibrate(10);
-            if(releaseTime-pressTime < 2 * ditTime) { // previous was a dit
+            // handle last press before timer went out
+            if(releaseTime-pressTime < 2 * ditTime) {
+                // previous was a dit
                 currentLetter = currentLetter * 10 + 1;
-            } else { // previous was a dah
+            } else {
+                // previous was a dah
                 currentLetter = currentLetter * 10 + 2;
             }
-            letterCommit(currentLetter, true);
+            letterCommit(currentLetter, spaceAtWordEnd);
             currentLetter = 0;
             newEntry = true;
         }
     };
 
+    // add letter to keyboard
     public void letterCommit(int letterKey, boolean newWord) {
         InputConnection ic = getCurrentInputConnection();
         if(morse.get(letterKey) == null) {
@@ -118,10 +126,12 @@ public class MorseIME extends InputMethodService
             android.util.Log.d("letterCommit","Letter failed.");
         } else {
             String letterString = morse.get(letterKey);
+            //Toast.makeText(getApplicationContext(),letterString,Toast.LENGTH_SHORT).show();
             if (keyboard.isShifted()) {
                 letterString = letterString.toUpperCase();
                 keyboard.setShifted(false);
             }
+
             if (punctuation.contains(letterString)) { // put punctuation before a space
                 if (" ".equals(ic.getTextBeforeCursor(1, 0))) {
                     ic.deleteSurroundingText(1, 0);
@@ -196,10 +206,13 @@ public class MorseIME extends InputMethodService
             } else {
                 long prevPressTime = pressTime;
                 pressTime = System.nanoTime();
-                if (pressTime - prevPressTime < 3 * ditTime) { // previous press was a dit
+                if (pressTime - prevPressTime < 3 * ditTime) {
+                    // previous press was a dit
                     currentLetter = currentLetter * 10 + 1;
-                } else if(pressTime - prevPressTime < 5 * ditTime) { //  previous dah+short pause or previous dit+letter separation pause
-                    if(releaseTime - prevPressTime > 2 * ditTime) { // previous dah+short pause
+                } else if(pressTime - prevPressTime < 5 * ditTime) {
+                    //  previous dah+short pause or previous dit+letter separation pause
+                    if(releaseTime - prevPressTime > 2 * ditTime) {
+                        // previous dah+short pause
                         currentLetter = currentLetter * 10 + 2;
                     } else { // previous dit+letter separation pause
                         currentLetter = currentLetter * 10 + 1;
@@ -219,11 +232,14 @@ public class MorseIME extends InputMethodService
     public void onRelease(int primaryCode) {
         if(primaryCode == 4) {
             releaseTime = System.nanoTime();
-            if(releaseTime-pressTime < 2 * ditTime) { // previous press was a dit, new word is 6 ditTime from the press
+            if(releaseTime-pressTime < 2 * ditTime) {
+                // previous press was a dit, new word is 6 ditTime from the press
                 wordHandler.postDelayed(wordTimeout, 6*ditMillis - pressTime/1000000 + releaseTime/1000000);
-            } else if(releaseTime-pressTime < 6 * ditTime) { // previous press was a dah, new word is 8 ditTime from the press
+            } else if(releaseTime-pressTime < 6 * ditTime) {
+                // previous press was a dah, new word is 8 ditTime from the press
                 wordHandler.postDelayed(wordTimeout, 8*ditMillis - pressTime/1000000 + releaseTime/1000000);
-            } else { // long press to cancel letter if you know you messed up
+            } else {
+                // long press to cancel letter if you know you messed up
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 v.vibrate(10);
                 currentLetter = 0;
@@ -232,6 +248,10 @@ public class MorseIME extends InputMethodService
         }
     }
 
+    private void killLetters() {
+        wordHandler.removeCallbacks(wordTimeout);
+        currentLetter = 0;
+    }
 
     @Override
     public void onText(CharSequence text) {
@@ -239,18 +259,39 @@ public class MorseIME extends InputMethodService
 
     @Override
     public void swipeDown() {
+        killLetters();
+
+        Context c = getApplicationContext();
+        Toast.makeText(c,"swipe down",Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void swipeLeft() {
+        killLetters();
+
+
+        Context c = getApplicationContext();
+        Toast.makeText(c,"swipe left",Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void swipeRight() {
+        killLetters();
+
+
         //send message or something?
+        Context c = getApplicationContext();
+        Toast.makeText(c,"swipe right",Toast.LENGTH_SHORT).show();
     }
 
+    // Toggle shift
     @Override
     public void swipeUp() {
+        keyboard.setShifted(!keyboard.isShifted());
+        killLetters();
+
+
+        Context c = getApplicationContext();
+        Toast.makeText(c,"swipe up",Toast.LENGTH_SHORT).show();
     }
 }
