@@ -152,8 +152,9 @@ public class MorseIME extends InputMethodService
         }
     }
 
-    @Override
-    public View onCreateInputView() {
+    // what to draw (keyboard)
+    //@Override
+    public View onCreateInputView_old() {
         KeyboardView kv;
         kv = (KeyboardView)getLayoutInflater().inflate(R.layout.keyboard, null);
         keyboard = new Keyboard(this, R.xml.onebutton);
@@ -164,6 +165,28 @@ public class MorseIME extends InputMethodService
         newEntry = true;
         return kv;
     }
+
+    //Lets do circles instead
+    // from Penti keyboard
+    // which links to https://stackoverflow.com/questions/11461002/transparent-inputmethod-for-android/20319466#20319466
+    @Override public View onCreateInputView() {
+        return null;
+    }
+    @Override public boolean onEvaluateFullscreenMode() {
+        return false;
+    }
+    @Override public void onFinishInput() { setCandidatesViewShown(false); super.onFinishInput(); }
+    @Override public View onCreateCandidatesView() {  // http://stackoverflow.com/a/20319466/1160216
+        ClearView CV = (ClearView)getLayoutInflater().inflate(R.layout.input, null);
+        CV.Ime = this;
+        CV.reset();
+        return CV;
+    }
+    @Override public void onStartInputView(android.view.inputmethod.EditorInfo info, boolean restarting) {
+        super.onStartInputView(info, restarting);
+        setCandidatesViewShown(true);
+    }
+
 
     /* Really cool prosign when you open the keyboard. Also super obnoxious.
     @Override
