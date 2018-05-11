@@ -3,6 +3,11 @@ I thought it would be cool to have an input method on Android where you enter Mo
 
 As the saying goes, if you want something done right, install Android Studio, learn Java, and spend hours searching through documentation to produce what turns out to be a keyboard that's really hard to use.
 
+## Inspiration
+ 1. [penti keyboard](https://software-lab.de/penti.html)
+ 2. [MorseKeyboard](https://software-lab.de/penti.html)
+ 3. [dotdash-keyboard-android](https://software-lab.de/penti.html)
+
 ## Installation
 ### With Android Studio
 The easiest way is to enable developer mode on your phone and running the code. Go to *Settings > About phone* and tap the Build number seven times. Going back to the Settings screen, there sholud now be *Developer options* somewhere near the bottom.
@@ -18,6 +23,12 @@ At this point you should be able to download the file from your phone or copy it
 
 You can then select the input method in *Settings > Language and input*
 
+#### quick updates
+```bash
+adb uninstall com.example.chris.morsekeyboard &&
+ adb install ./app/build/outputs/apk/app-debug.apk &&
+ adb shell ime enable com.example.chris.morsekeyboard/.MorseIME
+```
 ## Usage
 Tap Morse code into the foo button. This keyboard uses the international variant of morse code including punctuation.
 

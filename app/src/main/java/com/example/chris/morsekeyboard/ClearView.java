@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.Typeface;
@@ -28,6 +29,11 @@ class Touchable {
     public Context c;
     Paint Ring = new Paint();
     Paint CircleFill = new Paint();
+
+    // trace around a circle for dit time
+    // Path circlePath = new Path();
+    // https://stackoverflow.com/questions/5367950/android-drawing-an-animated-line
+    // http://www.curious-creature.com/2013/12/21/android-recipe-4-path-tracing/
 
     public Touchable(){
         // a circle that is transparent save it's dotted outline
@@ -121,11 +127,16 @@ public class ClearView extends View {
         switch (ev.getActionMasked()) {
             // we pushed down (just one. ACTION_POINTER_DOWN is many)
             case MotionEvent.ACTION_DOWN:
-                if (t.down(ev)) return(true);
+                if (t.down(ev)) {
+                    // redraw to get circle change on button push
+                    postInvalidate();
+                    return(true);
+                }
             break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 t.up(ev);
+                postInvalidate();
             break;
 
         }
