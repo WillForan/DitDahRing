@@ -1,30 +1,19 @@
 package com.example.chris.morsekeyboard;
-/* Mostly taken from Penti Keyboard
-* https://software-lab.de/penti.html
-* */
+
+/*
+ Transparent view with one button overlayed ontop of screen to act as keyboard
+ inflated by MorseIME
+
+ Mostly taken from Penti Keyboard
+ https://software-lab.de/penti.html
+*/
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.DashPathEffect;
-import android.graphics.LinearGradient;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RadialGradient;
-import android.graphics.Shader;
-import android.graphics.Typeface;
-import android.os.Handler;
-import android.os.Vibrator;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.inputmethod.InputConnection;
-import android.widget.Toast;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static android.os.SystemClock.uptimeMillis;
 
 
 public class ClearView extends View {

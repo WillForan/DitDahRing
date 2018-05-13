@@ -62,4 +62,15 @@ public class MorseCode {
         put("..._.._","$");
         put(".__._.","@");
     }};
+
+    static public String ditdah_letter(String ditdah, boolean isShift){
+        String letter = lookup.get(ditdah);
+        // enter or lookup character
+        // shift makes space into tab
+        if(letter != null) {
+            if (isShift && letter.equals(" ")) letter = "\t";
+            else if (isShift) letter = letter.toUpperCase();
+        }
+        return(letter);
+    }
 }

@@ -1,5 +1,19 @@
 package com.example.chris.morsekeyboard;
 
+/*
+  -- Meat of project -- code for single "ring" drawn over transparent view
+  implements:
+    * drawing
+    * push and swipe
+    * sending keyboard events
+    * timer (TODO)
+    * anination (TODO)
+  NB. Ime object is defined elsewhere (in ClearView, from MorseIME, set like t.Ime = this)
+  NB. Context defined elsewhere, same as above
+  NB. postInvalidate is called in ClearView to force redraw (e.g. to fill the ring after a push)
+
+    *
+ */
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -18,35 +32,34 @@ import static android.os.SystemClock.uptimeMillis;
 
 // class to store information about a touch
 class Touchable {
+    public long ditdur=100; //milliseconds; how long is a single interval (dit=.)
     MorseIME Ime; // is set by MorseIME->ClearView
-    MotionEvent Ev;
-    public long downTime;
+    MotionEvent Ev; //latest touch event
+    public long downTime; // when did we push down on the target
     public float tX,tY,tR; // target loc
-    public int hit = -1;
-    public Context c;
-    public long ditdur=100;
+    public int hit = -1; // are we currently on an inside-the-ring touch
+    public Context c; //used for toast
+
+    // modifiers
+    public boolean isShift = false;
+
+    // stuff to draw
     Paint Ring = new Paint();
     Paint CircleFill = new Paint();
     Paint ditdahLabel = new Paint();
-    public boolean isShift = false;
 
+    // current morse code and timer
+    String currentDitDah ="";
 
-    String currentLetter="";
-    Handler letterHandler;
     // timer for letters/words
+    Handler letterHandler;
     private Runnable letterTimeout = new Runnable() {
         @Override
         public void run() {
-            int a = 1;
-            // timed out -- not currently holding, send character
-            if( hit != 1) {
-                reset_letter(true);
-
-            } else{
-                // too soon or we are holding down
-                reset_letter(true); // do not sent!
-            }
-
+            // timed out
+            // if we aren't holding down (hit==1) send letter
+            // otherwise reset letter (prob a bad idea)
+            reset_letter(hit!=1);
         }
     };
 
@@ -60,7 +73,7 @@ class Touchable {
         // timer
         letterHandler = new Handler();
 
-        // a dotted ring to reprsent push target
+        // a dotted ring (visible on black background)
         Ring.setColor(Color.BLACK);
         Ring.setPathEffect(new DashPathEffect(new float[]{7,7}, 0));
         Ring.setStyle(Paint.Style.STROKE);
@@ -95,11 +108,15 @@ class Touchable {
         tX=x;tY=y;tR=r;
 
         // label for dits and dots keyed in so far
-        cv.drawText(currentLetter, x, y-tR, ditdahLabel);
+        cv.drawText(currentDitDah, x, y-tR, ditdahLabel);
 
+        // two rings, one for dark background
+        // another slightly smaller for light background
         // without shader, circle is not visible
         Ring.setShader(new RadialGradient(x, y, tR, Color.BLACK, Color.WHITE, Shader.TileMode.CLAMP));
         cv.drawCircle(tX,tY,tR,Ring);
+        Ring.setShader(new RadialGradient(x, y, tR-4, Color.WHITE, Color.BLACK, Shader.TileMode.CLAMP));
+        cv.drawCircle(tX,tY,tR-4,Ring);
 
         if(hit!=0) fill(cv);
 
@@ -122,13 +139,13 @@ class Touchable {
                 //long nextTimer = 4*ditdur + pressTime;
                 if(pressDur <= ditdur){
                     // . dit
-                    currentLetter += ".";
-                    //Toast.makeText(c,currentLetter,Toast.LENGTH_SHORT).show();
+                    currentDitDah += ".";
+                    //Toast.makeText(c,currentDitDah,Toast.LENGTH_SHORT).show();
 
                 }else if(pressDur <= ditdur*3) {
                     // _ dah
-                    currentLetter += "_";
-                    //Toast.makeText(c,currentLetter,Toast.LENGTH_SHORT).show();
+                    currentDitDah += "_";
+                    //Toast.makeText(c,currentDitDah,Toast.LENGTH_SHORT).show();
 
                 } else {
                     // long press
@@ -177,17 +194,12 @@ class Touchable {
     public void reset_letter(boolean send){
         if(send) {
             InputConnection ic = Ime.getCurrentInputConnection();
-            String letter = MorseCode.lookup.get(currentLetter);
-            // enter or lookup character
-            if(letter != null) {
-                if(isShift && letter.equals(" ")) letter = "\t";
-                else if(isShift ) letter = letter.toUpperCase();
+            String letter = MorseCode.ditdah_letter(currentDitDah,isShift);
+            if(letter != null)  ic.commitText(letter, 1);
+            //Ime.sendKeyChar((char)letter[0]);
 
-                ic.commitText(letter, 1);
-                //Ime.sendKeyChar((char)letter[0]);
-            }
         }
-        currentLetter = "";
+        currentDitDah = "";
         letterHandler.removeCallbacks(letterTimeout);
     }
 
