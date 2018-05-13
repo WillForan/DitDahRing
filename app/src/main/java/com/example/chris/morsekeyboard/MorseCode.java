@@ -1,7 +1,12 @@
 package com.example.chris.morsekeyboard;
+/*
+  translate dits and dots into characters.
+  provides lookup map and functions
 
+ */
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +41,8 @@ public class MorseCode {
         put("_.._","x");
         put("_.__","y");
         put("__..","z");
-        put(".____",".");
-        put("..___","_");
+        put(".____","1");
+        put("..___","2");
         put("...__","3");
         put("...._","4");
         put(".....","5");
@@ -77,10 +82,15 @@ public class MorseCode {
         return(letter);
     }
 
+    // create a tab and new line delimited large string to use as a lookup references
     static public String strTable(int pad){
         StringBuilder table = new StringBuilder("");
+        // sort by key
         List<String> keys = new ArrayList<String>(lookup.keySet());
-        Collections.sort(keys);
+        Collections.sort(keys, new Comparator<String>(){
+            public int compare(String a, String b){
+               return lookup.get(a).compareTo(lookup.get(b));
+            }});
         int ncol=3;
         int i=0;
         for(String mc : keys) {

@@ -36,38 +36,39 @@ import android.widget.Toast;
 import static android.os.SystemClock.uptimeMillis;
 
 // class to store information about a touch
-class Touchable {
-    public long ditdur=100; //milliseconds; how long is a single interval (dit=.)
+public class Touchable {
+    private  long ditdur=100; //milliseconds; how long is a single interval (dit=.)
     MorseIME Ime; // is set by MorseIME->ClearView
-    MotionEvent Ev; //latest touch event
-    public long downTime; // when did we push down on the target
-    public float tX,tY,tR; // target loc
-    public int hit = -1; // are we currently on an inside-the-ring touch
+    private  long downTime; // when did we push down on the target
+    private  float tX,tY,tR; // target loc
+    private  int hit = -1; // are we currently on an inside-the-ring touch
     public Context c; //used for toast
-    boolean showHelp = true;
+    private boolean showHelp = true; // rectangle with ditdot<->char dictionary
+    private boolean useTimer = true; // send letter after > 4 ditdur
 
     // modifiers
-    public boolean isShift = false;
+    private boolean isShift = false;
 
     // stuff to draw
-    Paint Ring = new Paint();
-    Paint CircleFill = new Paint();
-    Paint ditdahLabel = new Paint();
-    Paint boxbg = new Paint();
-    StaticLayout MChelp; // morse code character dictionary
+    private Paint Ring = new Paint();
+    private Paint CircleFill = new Paint();
+    private Paint ditdahLabel = new Paint();
+    private Paint boxbg = new Paint();
+    private StaticLayout MChelp; // morse code character dictionary
 
     // current morse code and timer
-    String currentDitDah ="";
+    private String currentDitDah ="";
 
-    // timer for letters/words
-    Handler letterHandler;
+    // timer for sending letters (otherwise swipe right)
+    private Handler letterHandler;
     private Runnable letterTimeout = new Runnable() {
-        @Override
-        public void run() {
-            // timed out
-            // if we aren't holding down (hit==1) send letter
-            // otherwise reset letter (prob a bad idea)
-            reset_letter(hit!=1);
+        @Override public void run() {
+            // timed out reached and we are not holding down the button
+            // send a letter
+            if(hit!=1) {
+                reset_letter(true);
+                // TODO: redraw to remove display of currentDitDah
+            }
         }
     };
 
@@ -77,7 +78,7 @@ class Touchable {
     // http://www.curious-creature.com/2013/12/21/android-recipe-4-path-tracing/
     // https://medium.com/@ali.muzaffar/android-change-colour-of-drawable-asset-programmatically-with-animation-e42ca595fabb
 
-    public Touchable(){
+    Touchable(){
         // timer
         letterHandler = new Handler();
 
@@ -96,6 +97,7 @@ class Touchable {
         reset_hit();
 
         // help box char dictionary
+        // display tree diagram instead? -- not as useful for quick look up
         TextPaint helpPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         helpPaint.setColor(Color.YELLOW);
         helpPaint.setTextSize(40);
@@ -108,16 +110,18 @@ class Touchable {
     }
 
     // on touch down: returns true when draw update needed
+    // but also if tracking ev for later
     public boolean down(MotionEvent ev) {
         // new push always resets send letter timeout
         letterHandler.removeCallbacks(letterTimeout);
         if(isHit(ev)) {
-            downTime=(Ev=ev).getEventTime(); //used by up to get dit or dash
+            downTime=ev.getEventTime(); //used by up to get dit or dash
             hit=1;
-            letterHandler.postDelayed(letterTimeout, downTime + 4*ditdur );
+            long delayMillis = 4*ditdur;
+            if(useTimer) letterHandler.postDelayed(letterTimeout, delayMillis);
             return(true);
         } else {
-            return(false);
+            return(true);
         }
 
     }
@@ -151,11 +155,10 @@ class Touchable {
         * otherwise add dit or dah to letter
      */
     public void up(MotionEvent ev){
+        long pressTime = uptimeMillis();
+        long pressDur = pressTime - ev.getDownTime();
         // initial push was on target
         if(hit!=0){
-            long pressTime = uptimeMillis();
-            long pressDur = pressTime - downTime;
-
             // touch stayed in the ring
             if(isHit(ev)){
                 // wait 4 dit durs before submitting character
@@ -202,16 +205,21 @@ class Touchable {
 
                 } else if(!above_xEmy && ! above_xEy) {
                     //swipe down
+                    // TODO: hide keyboard, set control?
                     //Toast.makeText(c,"Swipe Down",Toast.LENGTH_SHORT).show();
                 }
 
                 reset_letter(false);
             }
         } else {
-            // if releasing after a buton push
-            // TODO: long press vs short press
-            // maybe toggle timer useage
-            showHelp = !showHelp;
+            // if releasing after a non-button push
+            // short: show help, long: toggle using timer
+            if(pressDur < 3*ditdur) {
+                showHelp = !showHelp;
+            }else{
+                useTimer = !useTimer;
+                Toast.makeText(c,"timer: " + Boolean.toString(useTimer),Toast.LENGTH_SHORT).show();
+            }
         }
         reset_hit();
     }
@@ -222,10 +230,8 @@ class Touchable {
     public void reset_letter(boolean send){
         if(send) {
             InputConnection ic = Ime.getCurrentInputConnection();
-            String letter = MorseCode.ditdah_letter(currentDitDah,isShift);
+            String letter = MorseCode.ditdah_letter(currentDitDah, isShift);
             if(letter != null)  ic.commitText(letter, 1);
-            //Ime.sendKeyChar((char)letter[0]);
-
         }
         currentDitDah = "";
         letterHandler.removeCallbacks(letterTimeout);

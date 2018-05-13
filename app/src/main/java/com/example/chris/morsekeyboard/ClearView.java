@@ -15,9 +15,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 
-
 public class ClearView extends View {
-    MotionEvent Ev;
     MorseIME Ime;
     Context c;
     Touchable t = new Touchable();
@@ -28,11 +26,8 @@ public class ClearView extends View {
         c = context;
         if(c != null) t.c = c;
         t.Ime = Ime;
-
-
     }
     @Override public boolean onTouchEvent(MotionEvent ev) {
-        int action = ev.getActionMasked();
         //Toast.makeText(this.c,Integer.toString(ev.getActionMasked()),Toast.LENGTH_SHORT).show();
         switch (ev.getActionMasked()) {
             // we pushed down (just one. ACTION_POINTER_DOWN is many)
@@ -49,7 +44,6 @@ public class ClearView extends View {
                 t.up(ev);
                 postInvalidate();
             break;
-
         }
         return(false);
     }
@@ -61,12 +55,8 @@ public class ClearView extends View {
         float x,y;
         x=w/2; y=h-R;
         t.draw(canvas, x, y,R);
-
-
     }
     public void reset() {
       t.Ime = Ime;
-      return;
     }
-
 }
