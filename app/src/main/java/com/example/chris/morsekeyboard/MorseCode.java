@@ -1,6 +1,9 @@
 package com.example.chris.morsekeyboard;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MorseCode {
@@ -72,5 +75,26 @@ public class MorseCode {
             else if (isShift) letter = letter.toUpperCase();
         }
         return(letter);
+    }
+
+    static public String strTable(int pad){
+        StringBuilder table = new StringBuilder("");
+        List<String> keys = new ArrayList<String>(lookup.keySet());
+        Collections.sort(keys);
+        int ncol=3;
+        int i=0;
+        for(String mc : keys) {
+            if(mc.equals("")) continue; // don't mention space
+            String letter=lookup.get(mc);
+            // escape the escape chars
+            if(letter.equals("\n")) letter="\\n";
+            // pad string
+            if(mc.length() < pad) mc=String.format("%-"+pad+"s",mc);
+            // make text
+            table.append(letter); table.append(" ");
+            table.append(mc);     table.append("\t");
+            if(++i % ncol == 0 && i > 0) table.append("\n");
+        }
+        return(table.toString());
     }
 }

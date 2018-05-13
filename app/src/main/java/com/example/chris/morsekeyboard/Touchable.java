@@ -22,8 +22,13 @@ import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
+import android.graphics.Rect;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.Handler;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputConnection;
 import android.widget.Toast;
@@ -39,6 +44,7 @@ class Touchable {
     public float tX,tY,tR; // target loc
     public int hit = -1; // are we currently on an inside-the-ring touch
     public Context c; //used for toast
+    boolean showHelp = true;
 
     // modifiers
     public boolean isShift = false;
@@ -47,6 +53,8 @@ class Touchable {
     Paint Ring = new Paint();
     Paint CircleFill = new Paint();
     Paint ditdahLabel = new Paint();
+    Paint boxbg = new Paint();
+    StaticLayout MChelp; // morse code character dictionary
 
     // current morse code and timer
     String currentDitDah ="";
@@ -86,21 +94,32 @@ class Touchable {
         ditdahLabel.setTextSize(100);
         ditdahLabel.setStrokeWidth(100 / 8);
         reset_hit();
+
+        // help box char dictionary
+        TextPaint helpPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        helpPaint.setColor(Color.YELLOW);
+        helpPaint.setTextSize(40);
+        helpPaint.setTypeface(Typeface.create(Typeface.MONOSPACE,Typeface.BOLD));
+
+        boxbg.setColor(Color.BLACK);
+        boxbg.setStyle(Paint.Style.FILL);
+        MChelp = new StaticLayout(MorseCode.strTable(10), helpPaint, 800,
+                Layout.Alignment.ALIGN_NORMAL,1.0f,0.0f,false);
     }
 
-    // on touch down -- determin if within button
+    // on touch down: returns true when draw update needed
     public boolean down(MotionEvent ev) {
         // new push always resets send letter timeout
         letterHandler.removeCallbacks(letterTimeout);
         if(isHit(ev)) {
             downTime=(Ev=ev).getEventTime(); //used by up to get dit or dash
             hit=1;
-            //Toast.makeText(c,"Hit Down: "  + Integer.toString(hit) ,Toast.LENGTH_SHORT).show();
             letterHandler.postDelayed(letterTimeout, downTime + 4*ditdur );
             return(true);
+        } else {
+            return(false);
         }
 
-        return(false);
     }
 
     // set target position (done every draw?!)
@@ -119,6 +138,10 @@ class Touchable {
         cv.drawCircle(tX,tY,tR-4,Ring);
 
         if(hit!=0) fill(cv);
+        if(showHelp) {
+            cv.drawRect(new Rect(0,0,MChelp.getWidth(),MChelp.getHeight()),boxbg);
+            MChelp.draw(cv);
+        }
 
     }
     /* on touch release:
@@ -184,6 +207,11 @@ class Touchable {
 
                 reset_letter(false);
             }
+        } else {
+            // if releasing after a buton push
+            // TODO: long press vs short press
+            // maybe toggle timer useage
+            showHelp = !showHelp;
         }
         reset_hit();
     }

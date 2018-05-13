@@ -43,6 +43,7 @@ public class ClearView extends View {
                     return(true);
                 }
             break;
+            // up and cancel do the same thing
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 t.up(ev);
