@@ -1,4 +1,4 @@
-package com.example.chris.morsekeyboard;
+package com.example.chris.dit_dah_ring;
 /*
   translate dits and dots into characters.
   provides lookup map and functions

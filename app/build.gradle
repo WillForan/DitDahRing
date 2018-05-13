@@ -4,13 +4,13 @@ android {
     compileSdkVersion 23
     buildToolsVersion '27.0.3'
     defaultConfig {
-        applicationId "com.example.chris.morsekeyboard"
+        applicationId "com.example.chris.dit_dah_ring"
         minSdkVersion 15
         targetSdkVersion 23
         versionCode 1
-        versionName "1.0.2"
+        versionName "1.1"
         versionCode 1
-        versionNameSuffix 'clear'
+        versionNameSuffix 'timer'
     }
     buildTypes {
         release {

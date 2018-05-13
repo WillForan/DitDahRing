@@ -1,4 +1,4 @@
-package com.example.chris.morsekeyboard;
+package com.example.chris.dit_dah_ring;
 
 /*
   -- Meat of project -- code for single "ring" drawn over transparent view

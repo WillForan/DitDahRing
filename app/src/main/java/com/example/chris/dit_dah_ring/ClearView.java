@@ -1,4 +1,4 @@
-package com.example.chris.morsekeyboard;
+package com.example.chris.dit_dah_ring;
 
 /*
  Transparent view with one button overlayed ontop of screen to act as keyboard
