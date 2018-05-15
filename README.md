@@ -43,5 +43,6 @@ Tap anywhere else quickly
 - entering a new line (`._._` -> `\n`) does not send a message.
 - MC stack visualization is not cleared by timer sending letter.
 - No configuration
+- Toast messages do not clear. if overlap, only first is seen.
 - Toast message for disabled timer sent on release. could be confusing
 - Help dict is dimensions are hardcoded.

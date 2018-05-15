@@ -48,13 +48,13 @@ public class ClearView extends View {
         return(false);
     }
     @Override protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
         float w = canvas.getWidth();
         float h = canvas.getHeight();
         float x,y;
         x=w/2; y=h-R;
         t.draw(canvas, x, y,R);
+
+        super.onDraw(canvas);
     }
     public void reset() {
       t.Ime = Ime;

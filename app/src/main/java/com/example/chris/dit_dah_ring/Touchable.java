@@ -15,6 +15,7 @@ package com.example.chris.dit_dah_ring;
     *
  */
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -29,6 +30,7 @@ import android.os.Handler;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputConnection;
 import android.widget.Toast;
@@ -48,10 +50,14 @@ public class Touchable {
 
     // modifiers
     private boolean isShift = false;
+    // TODO: control
 
     // stuff to draw
-    private Paint Ring = new Paint();
-    private Paint CircleFill = new Paint();
+    private Paint Ring = new Paint();          // push target
+    private Paint CircleFill = new Paint();    // hit
+    private Paint CircleFill_dah = new Paint(); // hit of dah duration
+    private Paint CircleFill_ltr = new Paint(); // hit of ltr duration
+
     private Paint ditdahLabel = new Paint();
     private Paint boxbg = new Paint();
     private StaticLayout MChelp; // morse code character dictionary
@@ -77,6 +83,12 @@ public class Touchable {
     // https://stackoverflow.com/questions/5367950/android-drawing-an-animated-line
     // http://www.curious-creature.com/2013/12/21/android-recipe-4-path-tracing/
     // https://medium.com/@ali.muzaffar/android-change-colour-of-drawable-asset-programmatically-with-animation-e42ca595fabb
+
+    ValueAnimator animator_dah = ValueAnimator.ofInt(100,255);
+    ValueAnimator fill_to_dah = ValueAnimator.ofInt(10,255);
+    ValueAnimator animator_ltr = ValueAnimator.ofInt(0,255);
+
+
 
     Touchable(){
         // timer
@@ -107,6 +119,21 @@ public class Touchable {
         boxbg.setStyle(Paint.Style.FILL);
         MChelp = new StaticLayout(MorseCode.strTable(10), helpPaint, 800,
                 Layout.Alignment.ALIGN_NORMAL,1.0f,0.0f,false);
+
+        // animations
+        CircleFill_dah.setStyle(Paint.Style.FILL);
+        fill_to_dah.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                CircleFill.setARGB( 255,0,0, (int) animation.getAnimatedValue());
+            }
+        });
+        animator_ltr.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                CircleFill_ltr.setAlpha((int) animation.getAnimatedValue());
+            }
+        });
     }
 
     // on touch down: returns true when draw update needed
@@ -189,11 +216,17 @@ public class Touchable {
 
                 if(above_xEmy && ! above_xEy) {
                     // swipe left => delete
-                    //Toast.makeText(c,"Swipe Left",Toast.LENGTH_SHORT).show();
-                    Ime.getCurrentInputConnection().deleteSurroundingText(1, 0);
+                    int strlen = currentDitDah.length();
+                    if(!useTimer && strlen > 0 ){
+                       currentDitDah = currentDitDah.substring(0,strlen-1);
+                       hit=0;
+                       return; // don't reset_letter (just the hit)
+                    } else {
+                       Ime.getCurrentInputConnection().deleteSurroundingText(1, 0);
+                    }
 
                 } else if(!above_xEmy && above_xEy) {
-                    //swipe right -- send morse code to input method
+                    //swipe right -- send space or (esp if not using timer) send morse code to input method
                     reset_letter(true);
                     //Toast.makeText(c,"Swipe Right",Toast.LENGTH_SHORT).show();
 
@@ -226,6 +259,7 @@ public class Touchable {
     public void reset_hit(){
         hit=0;
         downTime=0;
+        animator_dah.removeAllUpdateListeners();
     }
     public void reset_letter(boolean send){
         if(send) {
@@ -243,14 +277,48 @@ public class Touchable {
         return Math.sqrt( Math.pow(tX-x,2.0) + Math.pow(tY-y,2.0) ) <= tR;
     }
 
-    // fill circle, default to white
+    // fill circle -- called on draw (if hit)
+    // what is drawn is only changed on push/release (when onDraw calls postInvalidate)
     public void fill(Canvas canvas){
-        int centerColor = Color.WHITE;
-        long current = System.currentTimeMillis();
-        if (current - downTime > 10e3) {
-            centerColor = Color.RED;
-        }
-        CircleFill.setShader(new LinearGradient(tX/4, 0, tY*3/4, 0, Color.BLACK, centerColor, Shader.TileMode.CLAMP));
+        int ditColor = Color.WHITE;
+        int dahColor = Color.BLUE;
+        int ltrColor = Color.RED;
+
+        // it's a hit -- add white color
+        //CircleFill.setShader(new LinearGradient(tX/4, 0, tY*3/4, 0, Color.BLACK, ditColor, Shader.TileMode.CLAMP));
+        CircleFill.setColor(ditColor);
         canvas.drawCircle(tX, tY, tR, CircleFill);
+
+       /*
+         // that might turn into a dah -- animate that transition
+        CircleFill_dah.setColor(dahColor);
+        CircleFill_dah.setAlpha(200);
+        animator_dah.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                CircleFill_dah.setAlpha((int) animation.getAnimatedValue());
+
+            }
+        });
+        canvas.drawCircle(tX+50, tY+50, tR, CircleFill_dah);
+        animator_dah.setDuration(100);
+        animator_dah.setRepeatMode(ValueAnimator.REVERSE);
+        animator_dah.setRepeatCount(-1);
+        animator_dah.start();
+        //animator_dah.removeAllUpdateListeners();
+        */
+        // and then queue the long letter
+
+        /* https://developer.android.com/guide/topics/graphics/prop-animation
+        Depending on what property or object you are animating,
+         you might need to call the invalidate() method on a View to
+         force the screen to redraw itself with the updated animated values.
+         You do this in the onAnimationUpdate() callback. For example, animating
+         the color property of a Drawable object only causes updates to the screen
+         when that object redraws itself. All of the property setters on View,
+         such as setAlpha() and setTranslationX() invalidate the View properly,
+         so you do not need to invalidate the View when calling these methods with new values.
+         For more information on listeners, see the section about Animation listeners.
+         */
     }
 }

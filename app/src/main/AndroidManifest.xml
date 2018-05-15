@@ -5,7 +5,7 @@
         android:icon="@mipmap/ic_launcher" android:theme="@style/AppTheme" android:debuggable="true">
         <!--TODO get rid of debuggable in above-->
         <service android:name="com.example.chris.dit_dah_ring.MorseIME"
-            android:label="Dit Dot Ring (Morse)"
+            android:label="Dit Dah Ring (Morse)"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
