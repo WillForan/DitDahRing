@@ -32,6 +32,7 @@ import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.inputmethod.InputConnection;
 import android.widget.Toast;
 
@@ -39,14 +40,20 @@ import static android.os.SystemClock.uptimeMillis;
 
 // class to store information about a touch
 public class Touchable {
-    private  long ditdur=100; //milliseconds; how long is a single interval (dit=.)
     MorseIME Ime; // is set by MorseIME->ClearView
+    public View view; // needed to call invalidate for dit/dah duration animations
+
+    private  long ditdur=100; //milliseconds; how long is a single interval (dit=.)
+
     private  long downTime; // when did we push down on the target
     private  float tX,tY,tR; // target loc
     private  int hit = -1; // are we currently on an inside-the-ring touch
     public Context c; //used for toast
     private boolean showHelp = true; // rectangle with ditdot<->char dictionary
     private boolean useTimer = true; // send letter after > 4 ditdur
+
+
+
 
     // modifiers
     private boolean isShift = false;
@@ -84,7 +91,7 @@ public class Touchable {
     // http://www.curious-creature.com/2013/12/21/android-recipe-4-path-tracing/
     // https://medium.com/@ali.muzaffar/android-change-colour-of-drawable-asset-programmatically-with-animation-e42ca595fabb
 
-    ValueAnimator animator_dah = ValueAnimator.ofInt(100,255);
+    ValueAnimator animator_dah = ValueAnimator.ofInt(0,255);
     ValueAnimator fill_to_dah = ValueAnimator.ofInt(10,255);
     ValueAnimator animator_ltr = ValueAnimator.ofInt(0,255);
 
@@ -240,6 +247,7 @@ public class Touchable {
                     //swipe down
                     // TODO: hide keyboard, set control?
                     //Toast.makeText(c,"Swipe Down",Toast.LENGTH_SHORT).show();
+                    Ime.requestHideSelf(0);
                 }
 
                 reset_letter(false);
@@ -289,15 +297,19 @@ public class Touchable {
         CircleFill.setColor(ditColor);
         canvas.drawCircle(tX, tY, tR, CircleFill);
 
-       /*
-         // that might turn into a dah -- animate that transition
+        /* */
+        // that might turn into a dah -- animate that transition
         CircleFill_dah.setColor(dahColor);
-        CircleFill_dah.setAlpha(200);
+        CircleFill_dah.setAlpha(0);
+        CircleFill_dah.setAlpha(100);
         animator_dah.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                CircleFill_dah.setAlpha((int) animation.getAnimatedValue());
-
+                int alphval = (int) animation.getAnimatedValue();
+                CircleFill_dah.setAlpha(alphval);
+                //we are here but are not redrawing!?
+                Toast.makeText(c,"setting alpha " + alphval,Toast.LENGTH_SHORT).show();
+                //view.postInvalidate();
             }
         });
         canvas.drawCircle(tX+50, tY+50, tR, CircleFill_dah);
@@ -306,7 +318,7 @@ public class Touchable {
         animator_dah.setRepeatCount(-1);
         animator_dah.start();
         //animator_dah.removeAllUpdateListeners();
-        */
+        /* */
         // and then queue the long letter
 
         /* https://developer.android.com/guide/topics/graphics/prop-animation

@@ -20,12 +20,14 @@ public class ClearView extends View {
     Context c;
     Touchable t = new Touchable();
     float R = 150;
+    float botpad=10;
 
     public ClearView(Context context, AttributeSet attrs) {
         super(context, attrs);
         c = context;
         if(c != null) t.c = c;
         t.Ime = Ime;
+        t.view = this;
     }
     @Override public boolean onTouchEvent(MotionEvent ev) {
         //Toast.makeText(this.c,Integer.toString(ev.getActionMasked()),Toast.LENGTH_SHORT).show();
@@ -51,8 +53,8 @@ public class ClearView extends View {
         float w = canvas.getWidth();
         float h = canvas.getHeight();
         float x,y;
-        x=w/2; y=h-R;
-        t.draw(canvas, x, y,R);
+        x=w/2; y=h-R - botpad;
+        t.draw(canvas, x, y, R);
 
         super.onDraw(canvas);
     }
