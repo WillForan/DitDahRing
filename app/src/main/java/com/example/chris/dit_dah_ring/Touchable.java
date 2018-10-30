@@ -15,6 +15,7 @@ package com.example.chris.dit_dah_ring;
     *
  */
 
+import android.animation.Animator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -62,7 +63,7 @@ public class Touchable {
     // stuff to draw
     private Paint Ring = new Paint();          // push target
     private Paint CircleFill = new Paint();    // hit
-    private Paint CircleFill_dah = new Paint(); // hit of dah duration
+    private Paint CircleFill_dit = new Paint(); // hit of dah duration
     private Paint CircleFill_ltr = new Paint(); // hit of ltr duration
 
     private Paint ditdahLabel = new Paint();
@@ -91,10 +92,14 @@ public class Touchable {
     // http://www.curious-creature.com/2013/12/21/android-recipe-4-path-tracing/
     // https://medium.com/@ali.muzaffar/android-change-colour-of-drawable-asset-programmatically-with-animation-e42ca595fabb
 
-    ValueAnimator animator_dah = ValueAnimator.ofInt(0,255);
+    ValueAnimator animator_dit = ValueAnimator.ofInt(0,100);
     ValueAnimator fill_to_dah = ValueAnimator.ofInt(10,255);
     ValueAnimator animator_ltr = ValueAnimator.ofInt(0,255);
 
+    int baseColor = Color.WHITE;
+    int ditColor = Color.BLUE;
+    int dahColor = Color.BLACK;
+    int ltrColor = Color.RED;
 
 
     Touchable(){
@@ -128,19 +133,55 @@ public class Touchable {
                 Layout.Alignment.ALIGN_NORMAL,1.0f,0.0f,false);
 
         // animations
-        CircleFill_dah.setStyle(Paint.Style.FILL);
+        CircleFill_dit.setStyle(Paint.Style.FILL);
         fill_to_dah.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                CircleFill.setARGB( 255,0,0, (int) animation.getAnimatedValue());
+                int colorval = (int) animation.getAnimatedValue();
+                CircleFill.setARGB( 255,0,0, colorval);
+                Toast.makeText(c,"new color " + colorval,Toast.LENGTH_SHORT).show();
+                //view.invalidate();
             }
         });
+        fill_to_dah.setDuration(ditdur*2);
+        fill_to_dah.setRepeatCount(0);
+
         animator_ltr.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 CircleFill_ltr.setAlpha((int) animation.getAnimatedValue());
             }
         });
+
+
+
+        CircleFill_dit.setColor(ditColor);
+        CircleFill_dit.setAlpha(0);
+        animator_dit.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int alphval = (int) animation.getAnimatedValue();
+                CircleFill_dit.setAlpha(alphval);
+                //CircleFill.setARGB( 255,alphval,100, 100);
+                //we are here but are not redrawing!?
+                //Toast.makeText(c,"setting alpha " + alphval,Toast.LENGTH_SHORT).show();
+                //view.postInvalidate();
+                view.invalidate();
+            }
+        });
+        /*animator_dit.addListener(new Animator.AnimatorListener() {
+            @Override public void onAnimationEnd(Animator animator) {
+                fill_to_dah.start();
+            }
+            @Override public void onAnimationStart(Animator animator) {}
+            @Override public void onAnimationCancel(Animator animator) {}
+            @Override public void onAnimationRepeat(Animator animator) {}
+        });*/
+
+        animator_dit.setDuration(ditdur);
+        animator_dit.setRepeatCount(0);
+        //animator_dah.setRepeatMode(ValueAnimator.REVERSE);
+
     }
 
     // on touch down: returns true when draw update needed
@@ -153,6 +194,8 @@ public class Touchable {
             hit=1;
             long delayMillis = 4*ditdur;
             if(useTimer) letterHandler.postDelayed(letterTimeout, delayMillis);
+
+            animator_dit.start();
             return(true);
         } else {
             return(true);
@@ -191,6 +234,11 @@ public class Touchable {
     public void up(MotionEvent ev){
         long pressTime = uptimeMillis();
         long pressDur = pressTime - ev.getDownTime();
+
+        // stop the animation
+        animator_dit.cancel();
+
+
         // initial push was on target
         if(hit!=0){
             // touch stayed in the ring
@@ -208,8 +256,8 @@ public class Touchable {
                     //Toast.makeText(c,currentDitDah,Toast.LENGTH_SHORT).show();
 
                 } else {
-                    // long press
-                    Toast.makeText(c,"Long press (rm cb) " + Float.toString(pressDur),Toast.LENGTH_SHORT).show();
+                    // long press - reset keys
+                    //Toast.makeText(c,"Long press (rm cb) " + Float.toString(pressDur),Toast.LENGTH_SHORT).show();
                     reset_letter(false);
                 }
                 // possible swipe action
@@ -267,7 +315,7 @@ public class Touchable {
     public void reset_hit(){
         hit=0;
         downTime=0;
-        animator_dah.removeAllUpdateListeners();
+        //animator_dah.removeAllUpdateListeners();
     }
     public void reset_letter(boolean send){
         if(send) {
@@ -285,38 +333,19 @@ public class Touchable {
         return Math.sqrt( Math.pow(tX-x,2.0) + Math.pow(tY-y,2.0) ) <= tR;
     }
 
-    // fill circle -- called on draw (if hit)
+    // called onDraw if hit
     // what is drawn is only changed on push/release (when onDraw calls postInvalidate)
     public void fill(Canvas canvas){
-        int ditColor = Color.WHITE;
-        int dahColor = Color.BLUE;
-        int ltrColor = Color.RED;
 
         // it's a hit -- add white color
         //CircleFill.setShader(new LinearGradient(tX/4, 0, tY*3/4, 0, Color.BLACK, ditColor, Shader.TileMode.CLAMP));
-        CircleFill.setColor(ditColor);
+        CircleFill.setColor(baseColor);
         canvas.drawCircle(tX, tY, tR, CircleFill);
 
         /* */
         // that might turn into a dah -- animate that transition
-        CircleFill_dah.setColor(dahColor);
-        CircleFill_dah.setAlpha(0);
-        CircleFill_dah.setAlpha(100);
-        animator_dah.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int alphval = (int) animation.getAnimatedValue();
-                CircleFill_dah.setAlpha(alphval);
-                //we are here but are not redrawing!?
-                Toast.makeText(c,"setting alpha " + alphval,Toast.LENGTH_SHORT).show();
-                //view.postInvalidate();
-            }
-        });
-        canvas.drawCircle(tX+50, tY+50, tR, CircleFill_dah);
-        animator_dah.setDuration(100);
-        animator_dah.setRepeatMode(ValueAnimator.REVERSE);
-        animator_dah.setRepeatCount(-1);
-        animator_dah.start();
+        canvas.drawCircle(tX, tY, tR, CircleFill_dit);
+
         //animator_dah.removeAllUpdateListeners();
         /* */
         // and then queue the long letter
