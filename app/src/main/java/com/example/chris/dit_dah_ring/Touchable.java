@@ -48,10 +48,14 @@ public class Touchable {
 
     private  long downTime; // when did we push down on the target
     private  float tX,tY,tR; // target loc
+    private float halfWidth;
+    private float downX,downY;
     private  int hit = -1; // are we currently on an inside-the-ring touch
     public Context c; //used for toast
-    private boolean showHelp = true; // rectangle with ditdot<->char dictionary
+    private boolean showHelp = false; // rectangle with ditdot<->char dictionary
     private boolean useTimer = true; // send letter after > 4 ditdur
+    private float botpad=100;
+    private float swipeDist=20;
 
 
 
@@ -139,8 +143,8 @@ public class Touchable {
             public void onAnimationUpdate(ValueAnimator animation) {
                 int colorval = (int) animation.getAnimatedValue();
                 CircleFill.setARGB( 255,0,0, colorval);
-                Toast.makeText(c,"new color " + colorval,Toast.LENGTH_SHORT).show();
-                //view.invalidate();
+                //Toast.makeText(c,"new color " + colorval,Toast.LENGTH_SHORT).show();
+                view.invalidate();
             }
         });
         fill_to_dah.setDuration(ditdur*2);
@@ -189,6 +193,9 @@ public class Touchable {
     public boolean down(MotionEvent ev) {
         // new push always resets send letter timeout
         letterHandler.removeCallbacks(letterTimeout);
+        downX=ev.getX();
+        downY=ev.getY();
+
         if(isHit(ev)) {
             downTime=ev.getEventTime(); //used by up to get dit or dash
             hit=1;
@@ -204,18 +211,28 @@ public class Touchable {
     }
 
     // set target position (done every draw?!)
-    public void draw(Canvas cv, float x, float y, float r){
-        tX=x;tY=y;tR=r;
+    public void draw(Canvas cv, float r){
+        if(tX == 0.0f || tY==0.0f) {
+            float w = cv.getWidth();
+            float h = cv.getHeight();
+            float x, y;
+            x = w / 2;
+            halfWidth = x;
+            y = h - r - botpad;
+            tX = x;
+            tY = y;
+            tR = r;
+        }
 
         // label for dits and dots keyed in so far
-        cv.drawText(currentDitDah, x, y-tR, ditdahLabel);
+        cv.drawText(currentDitDah, tX, tY-tR, ditdahLabel);
 
         // two rings, one for dark background
         // another slightly smaller for light background
         // without shader, circle is not visible
-        Ring.setShader(new RadialGradient(x, y, tR, Color.BLACK, Color.WHITE, Shader.TileMode.CLAMP));
+        Ring.setShader(new RadialGradient(tX, tY, tR, Color.BLACK, Color.WHITE, Shader.TileMode.CLAMP));
         cv.drawCircle(tX,tY,tR,Ring);
-        Ring.setShader(new RadialGradient(x, y, tR-4, Color.WHITE, Color.BLACK, Shader.TileMode.CLAMP));
+        Ring.setShader(new RadialGradient(tX, tY, tR-4, Color.WHITE, Color.BLACK, Shader.TileMode.CLAMP));
         cv.drawCircle(tX,tY,tR-4,Ring);
 
         if(hit!=0) fill(cv);
@@ -234,6 +251,8 @@ public class Touchable {
     public void up(MotionEvent ev){
         long pressTime = uptimeMillis();
         long pressDur = pressTime - ev.getDownTime();
+        float swipeY = downY - ev.getY();
+
 
         // stop the animation
         animator_dit.cancel();
@@ -262,7 +281,15 @@ public class Touchable {
                 }
                 // possible swipe action
             } else {
-
+                // move the ring
+                if(pressDur>ditdur*10){
+                    tX = ev.getX();
+                    tY = ev.getY();
+                    view.invalidate();
+                    //Toast.makeText(c,"(in) Moving Ring to " + tX + "," +tY,Toast.LENGTH_SHORT).show();
+                    reset_letter(false);
+                    return;
+                }
                 float dX = tX-ev.getX();
                 float dY = tY-ev.getY();
                 // swipe direction based on identity lines y=x and y=-x
@@ -300,12 +327,38 @@ public class Touchable {
 
                 reset_letter(false);
             }
+         // started outside ring, ended outside ring
         } else {
+            if(swipeY >= swipeDist){
+               Toast.makeText(c,"(out) swipe up",Toast.LENGTH_SHORT).show();
+
+            }else if (swipeY <= -1*swipeDist) {
+                Toast.makeText(c,"(out) swipe down",Toast.LENGTH_SHORT).show();
+            }
+            // one quick hit outside the ring counts as a dah
+            else if(pressDur < 5*ditdur) {
+                if(ev.getX() < halfWidth) {
+                    currentDitDah += ".";
+                } else {
+                    currentDitDah += "_";
+                }
+                // we were never a hit, so haven't touched the timer
+                if(useTimer) letterHandler.postDelayed(letterTimeout, 4*ditdur);
+                return;
+            }
             // if releasing after a non-button push
             // short: show help, long: toggle using timer
-            if(pressDur < 3*ditdur) {
+            else if(pressDur < 10*ditdur) {
                 showHelp = !showHelp;
-            }else{
+            }else if(pressDur>ditdur*15){
+                tX = ev.getX();
+                tY = ev.getY();
+                view.invalidate();
+                //Toast.makeText(c,"(out) Moving Ring to " + tX + "," +tY,Toast.LENGTH_SHORT).show();
+                reset_letter(false);
+            }
+            // between 1s and 1.5s -- show help
+            else{
                 useTimer = !useTimer;
                 Toast.makeText(c,"timer: " + Boolean.toString(useTimer),Toast.LENGTH_SHORT).show();
             }
