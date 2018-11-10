@@ -19,7 +19,6 @@ public class ClearView extends View {
     MorseIME Ime;
     Context c;
     Touchable t = new Touchable();
-    float R = 200;
 
     public ClearView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -49,7 +48,7 @@ public class ClearView extends View {
         return(false);
     }
     @Override protected void onDraw(Canvas canvas) {
-        t.draw(canvas, R);
+        t.draw(canvas);
 
         super.onDraw(canvas);
     }

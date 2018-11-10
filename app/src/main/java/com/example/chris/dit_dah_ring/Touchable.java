@@ -27,11 +27,14 @@ import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.Log;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
@@ -45,6 +48,7 @@ public class Touchable {
     public View view; // needed to call invalidate for dit/dah duration animations
 
     private  long ditdur=100; //milliseconds; how long is a single interval (dit=.)
+    private float R = 200; // default start radius
 
     private  long downTime; // when did we push down on the target
     private  float tX,tY,tR; // target loc
@@ -55,7 +59,8 @@ public class Touchable {
     private boolean showHelp = false; // rectangle with ditdot<->char dictionary
     private boolean useTimer = true; // send letter after > 4 ditdur
     private float botpad=100;
-    private float swipeDist=20;
+    private float swipeDist=100;
+    private KeyCharacterMap keyMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
 
 
 
@@ -73,6 +78,7 @@ public class Touchable {
     private Paint ditdahLabel = new Paint();
     private Paint boxbg = new Paint();
     private StaticLayout MChelp; // morse code character dictionary
+    private ModKeys mods = new ModKeys();
 
     // current morse code and timer
     private String currentDitDah ="";
@@ -211,17 +217,17 @@ public class Touchable {
     }
 
     // set target position (done every draw?!)
-    public void draw(Canvas cv, float r){
-        if(tX == 0.0f || tY==0.0f) {
+    public void draw(Canvas cv){
+        if(tX == 0.0f || tY==0.0f || tR == 0.0f) {
             float w = cv.getWidth();
             float h = cv.getHeight();
             float x, y;
             x = w / 2;
             halfWidth = x;
-            y = h - r - botpad;
+            y = h - R - botpad;
             tX = x;
             tY = y;
-            tR = r;
+            tR = R;
         }
 
         // label for dits and dots keyed in so far
@@ -252,6 +258,7 @@ public class Touchable {
         long pressTime = uptimeMillis();
         long pressDur = pressTime - ev.getDownTime();
         float swipeY = downY - ev.getY();
+        float swipeX = downX - ev.getX();
 
 
         // stop the animation
@@ -282,6 +289,7 @@ public class Touchable {
                 // possible swipe action
             } else {
                 // move the ring
+                // TODO: resize ring? Left for smaller right for bigger?
                 if(pressDur>ditdur*10){
                     tX = ev.getX();
                     tY = ev.getY();
@@ -329,8 +337,26 @@ public class Touchable {
             }
          // started outside ring, ended outside ring
         } else {
+            // left is backspace
+            if(swipeX >= swipeDist){
+                Ime.getCurrentInputConnection().deleteSurroundingText(1, 0);
+                //Toast.makeText(c,"(out) swipe left",Toast.LENGTH_SHORT).show();
+                return;
+            // right is send what we have, space if nothing
+            } else if(swipeX <= -1*swipeDist) {
+                //Toast.makeText(c,"(out) swipe right (send)",Toast.LENGTH_SHORT).show();
+                reset_letter(true);
+                return;
+            }
+            // else if?
             if(swipeY >= swipeDist){
-               Toast.makeText(c,"(out) swipe up",Toast.LENGTH_SHORT).show();
+                if(ev.getX() < halfWidth) {
+                    mods.ctrl = ! mods.ctrl;
+                    Toast.makeText(c,"(left out) swipe up: set ctrl to " + mods.ctrl,Toast.LENGTH_SHORT).show();
+                } else {
+                    mods.alt = ! mods.alt;
+                    Toast.makeText(c,"(right out) swipe up: set alt to " + mods.alt,Toast.LENGTH_SHORT).show();
+                }
 
             }else if (swipeY <= -1*swipeDist) {
                 Toast.makeText(c,"(out) swipe down",Toast.LENGTH_SHORT).show();
@@ -371,10 +397,19 @@ public class Touchable {
         //animator_dah.removeAllUpdateListeners();
     }
     public void reset_letter(boolean send){
-        if(send) {
+        String letter = MorseCode.ditdah_letter(currentDitDah, isShift);
+        if(send && letter != null) {
+            char[] l = letter.toCharArray();
             InputConnection ic = Ime.getCurrentInputConnection();
-            String letter = MorseCode.ditdah_letter(currentDitDah, isShift);
-            if(letter != null)  ic.commitText(letter, 1);
+            int m = mods.codes();
+            if(m==0){
+                Ime.sendKeyChar(l[0]); // handles newline as submit
+                //ic.commitText(letter, 1); // doesn't send on ._._
+            } else {
+                KeyEvent e = keyMap.getEvents(l)[0];
+                Toast.makeText(c,"sending key " + e.getKeyCode(),Toast.LENGTH_SHORT).show();
+                ic.sendKeyEvent( new KeyEvent( KeyEvent.ACTION_UP, e.getKeyCode() | m ));
+            }
         }
         currentDitDah = "";
         letterHandler.removeCallbacks(letterTimeout);
@@ -415,4 +450,31 @@ public class Touchable {
          For more information on listeners, see the section about Animation listeners.
          */
     }
+
+    // possible modifiers
+    class ModKeys{
+        public boolean shift;
+        public boolean ctrl;
+        public boolean alt;
+        public boolean special;
+        void ModKeys(){
+            clear();
+        }
+        void clear(){
+           shift=false; ctrl=false; alt=false; special=false;
+        }
+        // code to send
+        int codes(){
+            int r = 0;
+            if(shift) { r |= KeyEvent.META_SHIFT_LEFT_ON;}
+            if(alt  ) { r |= KeyEvent.META_ALT_ON;}
+            if(ctrl ) { r |= KeyEvent.META_CTRL_ON;}
+            return(r);
+        }
+        // return color for ring based on modifiers
+        int color(){
+            return(Color.BLACK);
+        }
+    }
 }
+
